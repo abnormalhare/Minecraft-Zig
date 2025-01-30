@@ -13,6 +13,9 @@ const Tiles = @import("Tile.zig");
 
 const CHUNK_SIZE: i32 = 16;
 
+var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+const allocator = gpa.allocator();
+
 pub const LevelRenderer = struct {
     _levelListener: LevelListener,
     level: *Level,
@@ -22,14 +25,13 @@ pub const LevelRenderer = struct {
     zChunks: i32,
     t: Tesselator,
 
-    fn new(level: *Level) LevelRenderer {
-        const lr = LevelRenderer{
-            .t = Tesselator{},
-            .level = level,
-            .xChunks = level.width / 16,
-            .yChunks = level.depth / 16,
-            .zChunks = level.height / 16,
-        };
+    pub fn new(level: *Level) *LevelRenderer {
+        const lr: *LevelRenderer = try allocator.create(LevelRenderer);
+        lr.t = Tesselator{};
+        lr.level = level;
+        lr.xChunks = level.width / 16;
+        lr.yChunks = level.depth / 16;
+        lr.zChunks = level.height / 16;
         lr.chunks = [_]Chunk{} ** (lr.xChunks * lr.yChunks * lr.zChunks);
         lr._levelListener.base = lr;
         lr._levelListener.tileChanged = lr.tileChanged;
@@ -37,12 +39,9 @@ pub const LevelRenderer = struct {
         lr._levelListener.allChanged = lr.allChanged;
         level.addListener(&lr.LevelListener);
 
-        var x: i32 = 0;
-        var y: i32 = 0;
-        var z: i32 = 0;
-        while (x < lr.xChunks) : (x += 1) {
-            while (y < lr.yChunks) : (y += 1) {
-                while (z < lr.zChunks) : (z += 1) {
+        for (0..lr.xChunks) |x| {
+            for (0..lr.yChunks) |y| {
+                for (0..lr.zChunks) |z| {
                     const x0: i32 = x * 16;
                     const y0: i32 = y * 16;
                     const z0: i32 = z * 16;
@@ -62,7 +61,7 @@ pub const LevelRenderer = struct {
         }
     }
 
-    fn render(self: *LevelRenderer, player: Player, layer: i32) void {
+    pub fn render(self: *LevelRenderer, player: Player, layer: i32) void {
         Chunk.rebuiltThisFrame = 0;
         const frustum: Frustum = Frustum.getFrustum();
         for (self.chunks) |i| {
@@ -73,7 +72,7 @@ pub const LevelRenderer = struct {
         player;
     }
 
-    fn pick(self: *LevelRenderer, player: Player) void {
+    pub fn pick(self: *LevelRenderer, player: Player) void {
         const r: f32 = 3.0;
         const box: AABB = player.bb.grow(r, r, r);
         const x0: i32 = box.x0;
@@ -83,20 +82,16 @@ pub const LevelRenderer = struct {
         const z0: i32 = box.z0;
         const z1: i32 = box.z1 + 1.0;
 
-        var x: i32 = x0;
-        var y: i32 = y0;
-        var z: i32 = z0;
         GL.glInitNames();
-        while (x < x1) : (x += 1) {
+        for (x0..x1) |x| {
             GL.glPushName(x);
-            while (y < y1) : (y += 1) {
+            for (y0..y1) |y| {
                 GL.glPushName(y);
-                while (z < z1) : (z += 1) {
+                for (z0..z1) |z| {
                     GL.glPushName(z);
                     if (self.level.isSolidTile(x, y, z)) {
-                        const i: i32 = 0;
                         GL.glPushName(0);
-                        while (i < 6) : (i += 1) {
+                        for (0..6) |i| {
                             GL.glPushName(i);
                             self.t.init();
                             Tiles.rock.renderFace(self.t, x, y, z, i);
@@ -113,7 +108,7 @@ pub const LevelRenderer = struct {
         }
     }
 
-    fn renderHit(self: *LevelRenderer, h: HitResult) void {
+    pub fn renderHit(self: *LevelRenderer, h: HitResult) void {
         GL.glEnable(GL.GL_BLEND);
         GL.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE);
         GL.glColor4f(1.0, 1.0, 1.0, f32(std.math.sin(std.time.milliTimestamp() / 100.0)) * 0.2 + 0.4);
@@ -123,7 +118,7 @@ pub const LevelRenderer = struct {
         GL.glDisable(GL.GL_BLEND);
     }
 
-    fn setDirty(self: *LevelRenderer, x0: i32, y0: i32, z0: i32, x1: i32, y1: i32, z1: i32) void {
+    pub fn setDirty(self: *LevelRenderer, x0: i32, y0: i32, z0: i32, x1: i32, y1: i32, z1: i32) void {
         x0 /= 16; x1 /= 16;
         y0 /= 16; y1 /= 16;
         z0 /= 16; z1 /= 16;
@@ -135,27 +130,24 @@ pub const LevelRenderer = struct {
         if (y1 >= self.yChunks) y1 = self.yChunks - 1;
         if (z1 >= self.zChunks) z1 = self.zChunks - 1;
 
-        var x: i32 = x0;
-        var y: i32 = y0;
-        var z: i32 = z0;
-        while (x <= x1) : (x += 1) {
-            while (y <= y1) : (y += 1) {
-                while (z <= z1) : (z += 1) {
+        for (x0..(x1 + 1)) |x| {
+            for (y0..(y1 + 1)) |y| {
+                for (z0..(z1 + 1)) |z| {
                     self.chunks[(x + y * self.xChunks) * self.zChunks + z].setDirty();
                 }
             }
         }
     }
 
-    fn tileChanged(self: *LevelListener, x: i32, y: i32, z: i32) void {
+    pub fn tileChanged(self: *LevelListener, x: i32, y: i32, z: i32) void {
         self.base.setDirty(x - 1, y - 1, z - 1, x + 1, y + 1, z + 1);
     }
 
-    fn lightColumnChanged(self: *LevelListener, x: i32, y0: i32, y1: i32, z: i32) void {
+    pub fn lightColumnChanged(self: *LevelListener, x: i32, y0: i32, y1: i32, z: i32) void {
         self.base.setDirty(x - 1, y0 - 1, z - 1, x + 1, y1 + 1, z + 1);
     }
 
-    fn allChanged(self: *LevelListener) void {
+    pub fn allChanged(self: *LevelListener) void {
         self.base.setDirty(0, 0, 0, self.base.level.width, self.base.level.depth, self.base.level.height);
     }
 };

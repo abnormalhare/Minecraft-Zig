@@ -25,7 +25,7 @@ pub const Timer = struct {
 
     pub fn advanceTime(self: *Timer) void {
         const now: i128 = std.time.nanoTimestamp();
-        const passedNs: i128 = now - self.lastTime;
+        var passedNs: i128 = now - self.lastTime;
         self.lastTime = now;
 
         if (passedNs < 0) passedNs = 0;

@@ -26,10 +26,10 @@ pub const Chunk = struct {
     texture: i32 = Textures.loadTexture("/terrain.png", GL.GL_NEAREST),
     t: Tesselator = Tesselator{},
 
-    const rebuiltThisFrame: i32 = 0;
-    const updates: i32 = 0;
+    pub var rebuiltThisFrame: i32 = 0;
+    pub var updates: i32 = 0;
 
-    fn new(level: *Level, x0: i32, y0: i32, z0: i32, x1: i32, y1: i32, z1: i32) *Chunk {
+    pub fn new(level: *Level, x0: i32, y0: i32, z0: i32, x1: i32, y1: i32, z1: i32) *Chunk {
         const c: *Chunk = try allocator.alloc(Chunk, 1);
         c.level = level;
         c.x0 = x0; c.y0 = y0; c.z0 = z0;
@@ -53,12 +53,9 @@ pub const Chunk = struct {
         self.t.init();
 
         var tiles: i32 = 0;
-        var x: i32 = self.x0;
-        var y: i32 = self.y0;
-        var z: i32 = self.z0;
-        while (x < self.x1) : (x += 1) {
-            while (y < self.y1) : (y += 1) {
-                while (z < self.z1) : (z += 1) {
+        for (self.x0..self.x1) |x| {
+            for (self.y0..self.y1) |y| {
+                for (self.z0..self.z1) |z| {
                     const tex: i32 = if (y == self.level.depth * 2 / 3) 0 else 1;
                     tiles += 1;
                     if (tex == 0) {
@@ -74,7 +71,7 @@ pub const Chunk = struct {
         GL.glEndList();
     }
 
-    fn render(self: *Chunk, layer: i32) void {
+    pub fn render(self: *Chunk, layer: i32) void {
         if (self.dirty) {
             self.rebuild(0);
             self.rebuild(1);
@@ -82,7 +79,7 @@ pub const Chunk = struct {
         GL.glCallList(self.lists + layer);
     }
 
-    fn setDirty(self: *Chunk) void {
+    pub fn setDirty(self: *Chunk) void {
         self.dirty = true;
     }
 };

@@ -4,7 +4,7 @@ const Level = @import("Level.zig").Level;
 pub const Tile = struct {
     tex: i32 = 0,
 
-    fn render(self: *Tile, t: Tesselator, level: *Level, layer: i32, x: i32, y: i32, z: i32) void {
+    pub fn render(self: *Tile, t: Tesselator, level: *Level, layer: i32, x: i32, y: i32, z: i32) void {
         const _u0: f32 = self.tex / 16.0;
         const _u1: f32 = _u0 + 0.0624375;
         const v0: f32 = 0.0;
@@ -111,7 +111,7 @@ pub const Tile = struct {
         }
     }
 
-    fn renderFace(self: *Tile, t: Tesselator, x: i32, y: i32, z: i32, face: i32) void {
+    pub fn renderFace(self: *Tile, t: Tesselator, x: i32, y: i32, z: i32, face: i32) void {
         const x0: f32 = x + 0.0;
         const x1: f32 = x + 1.0;
         const y0: f32 = y + 0.0;

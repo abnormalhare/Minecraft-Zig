@@ -10,8 +10,12 @@ const LevelRenderer = @import("level/LevelRenderer.zig").LevelRenderer;
 const Player = @import("Player.zig").Player;
 const HitResult = @import("HitResult.zig").HitResult;
 const Chunk = @import("level/Chunk.zig").Chunk;
+const Frustum = @import("level/Frustum.zig").Frustum;
 
 const FULLSCREEN_MODE: bool = false;
+
+var gpa = std.heap.GeneralPurposeAllocator(.{ .verbose_log = true }){};
+const allocator = gpa.allocator();
 
 pub const RubyDung = struct {
     width: i32,
@@ -26,12 +30,12 @@ pub const RubyDung = struct {
     viewportBuffer: [16]i32,
     selectBuffer: [2000]u32,
 
-    window: *GL.GLFWwindow,
-    cursor: *GL.GLFWcursor,
+    window: ?*GL.GLFWwindow,
+    cursor: ?*GL.GLFWcursor,
     lastMouseX: f64 = 0.0,
     lastMouseY: f64 = 0.0,
 
-    fn mouseButtonCallback(self: *RubyDung, window: *GL.GLFWwindow, button: i32, action: i32, mods: i32) void {
+    fn mouseButtonCallback(self: *RubyDung, window: ?*GL.GLFWwindow, button: i32, action: i32, mods: i32) void {
         if (button == GL.GLFW_MOUSE_BUTTON_RIGHT and action == GL.GLFW_PRESS) {
             if (self.hitResult != null) {
                 self.level.setTile(self.hitResult.x, self.hitResult.y, self.hitResult.z, 0);
@@ -57,7 +61,7 @@ pub const RubyDung = struct {
         mods;
     }
 
-    fn keyCallback(self: *RubyDung, window: *GL.GLFWwindow, key: i32, scancode: i32, action: i32, mods: i32) void {
+    fn keyCallback(self: *RubyDung, window: ?*GL.GLFWwindow, key: i32, scancode: i32, action: i32, mods: i32) void {
         if (key == GL.GLFW_KEY_ESCAPE and action == GL.GLFW_PRESS) {
             self.level.save();
             GL.glfwSetWindowShouldClose(window, GL.GLFW_TRUE);
@@ -67,7 +71,7 @@ pub const RubyDung = struct {
     }
 
     fn setDisplayMode(self: *RubyDung, width: i32, height: i32) void {
-        if (GL.glfwInit()) {
+        if (GL.glfwInit() != 0) {
             std.debug.print("Failed to initialize GLFW", .{});
             std.process.exit(1);
         }
@@ -76,15 +80,15 @@ pub const RubyDung = struct {
         GL.glfwWindowHint(GL.GLFW_CONTEXT_VERSION_MINOR, 1);
 
         self.window = GL.glfwCreateWindow(width, height, "Game", null, null);
-        if (!self.window) {
+        if (self.window == null) {
             GL.glfwTerminate();
             std.debug.print("Failed to create window", .{});
             std.process.exit(1);
         }
         GL.glfwMakeContextCurrent(self.window);
 
-        GL.glfwSetMouseButtonCallback(self.window, mouse_button_callback);
-        GL.glfwSetKeyCallback(self.window, key_callback);
+        _ = GL.glfwSetMouseButtonCallback(self.window, mouse_button_callback);
+        _ = GL.glfwSetKeyCallback(self.window, key_callback);
     }
 
     fn getMouseDX(self: *RubyDung) f32 {
@@ -110,9 +114,8 @@ pub const RubyDung = struct {
 
     // ----
 
-    fn init() *RubyDung {
-        const allocator = std.heap.page_allocator;
-        const self: *RubyDung = try allocator.alloc(RubyDung, 1);
+    fn init() !*RubyDung {
+        const self: *RubyDung = try allocator.create(RubyDung);
 
         const col: i32 = 0x0E0B0A;
         const fr: f32 = 0.5;
@@ -139,9 +142,9 @@ pub const RubyDung = struct {
         GL.glLoadIdentity();
         GL.glMatrixMode(GL.GL_MODELVIEW);
 
-        self.level = Level.new(256, 256, 64);
+        self.level = try Level.new(256, 256, 64);
         self.levelRenderer = LevelRenderer.new(self.level);
-        self.player = self.player.init(self.level, self.window);
+        self.player = Player.init(self.level, self.window);
         self.timer = Timer.new(60.0);
 
         GL.glfwSetInputMode(self.window, GL.GLFW_CURSOR, GL.GLFW_CURSOR_DISABLED);
@@ -162,9 +165,8 @@ pub const RubyDung = struct {
         var frames: i32 = 0;
         while (GL.glfwWindowShouldClose(self.window) == 0) {
             self.timer.advanceTime();
-            var i: i32 = 0;
-            while (i < self.timer.ticks) : (i += 1) {
-                self.tick();
+            for (0..self.timer.ticks) |i| {
+                self.tick(); i;
             }
             self.render(self.timer.a);
             frames += 1;
@@ -229,8 +231,7 @@ pub const RubyDung = struct {
         var hitNameCount: i32 = 0;
         var index: i32 = 0;
 
-        var i: i32 = 0;
-        while (i < hits) : (i += 1) {
+        for (0..hits) |i| {
             const nameCount: u32 = self.selectBuffer[index];
             index += 1;
             const minZ: i64 = self.selectBuffer[index];
@@ -285,15 +286,23 @@ pub const RubyDung = struct {
 
 var rd: *RubyDung = undefined;
 
+fn initExternal() void {
+    Frustum.frustum = Frustum.new();
+}
+
 pub fn main() !void {
-    rd = RubyDung.init();
+    initExternal();
+
+    rd = try RubyDung.init();
+    defer rd.destroy();
+
     rd.run();
 }
 
-fn mouse_button_callback(window: *GL.GLFWwindow, button: i32, action: i32, mods: i32) void {
-    rd.mouseButtonCallback(window, button, action, mods);
+fn mouse_button_callback(window: ?*GL.GLFWwindow, button: c_int, action: c_int, mods: c_int) callconv(.C) void {
+    rd.mouseButtonCallback(window, @as(i32, button), @as(i32, action), @as(i32, mods));
 }
 
-fn key_callback(window: *GL.GLFWwindow, key: i32, scancode: i32, action: i32, mods: i32) void {
-    rd.mouseButtonCallback(window, key, scancode, action, mods);
+fn key_callback(window: ?*GL.GLFWwindow, key: c_int, scancode: c_int, action: c_int, mods: c_int) callconv(.C) void {
+    rd.mouseButtonCallback(window, @as(i32, key), @as(i32, scancode), @as(i32, action), @as(i32, mods));
 }

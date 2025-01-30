@@ -2,6 +2,9 @@ const std = @import("std");
 const LevelListener = @import("LevelListener.zig").LevelListener;
 const AABB = @import("../phys/AABB.zig").AABB;
 
+var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+const allocator = gpa.allocator();
+
 pub const Level = struct {
     width: i32, height: i32, depth: i32,
 
@@ -10,21 +13,25 @@ pub const Level = struct {
 
     levelListeners: std.ArrayList(*LevelListener),
 
-    fn new(w: i32, h: i32, d: i32) Level {
-        const l: Level = Level{w, h, d};
+    pub fn new(w: i32, h: i32, d: i32) !*Level {
+        const l: *Level = try allocator.create(Level);
 
-        l.blocks = [w * h * d]u8;
-        l.lightDepths = [w * h]i32;
+        const _w: usize = @intCast(w);
+        const _h: usize = @intCast(h);
+        const _d: usize = @intCast(d);
+
+        l.width = w;
+        l.height = h;
+        l.depth = d;
+        l.blocks = try allocator.alloc(u8, _w * _h * _d);
+        l.lightDepths = try allocator.alloc(i32, _w * _h);
         l.levelListeners = std.ArrayList(*LevelListener).init(std.heap.page_allocator);
 
-        var x: i32 = 0;
-        var y: i32 = 0;
-        var z: i32 = 0;
-        while (x < w) : (x += 1) {
-            while (y < d) : (y += 1) {
-                while (z < h) : (z += 1) {
-                    const i: i32 = (y * l.height + z) * l.width + x;
-                    l.blocks[i] = if (y <= (d * 2 / 3)) 1 else 0;
+        for (0.._w) |x| {
+            for (0.._d) |y| {
+                for (0.._h) |z| {
+                    const i: usize = (y * @as(usize, @intCast(l.height)) + z) * @as(usize, @intCast(l.width)) + x;
+                    l.blocks[i] = if (y <= @divFloor(d * 2, 3)) 1 else 0;
                 }
             }
         }
@@ -35,7 +42,7 @@ pub const Level = struct {
         return l;
     }
 
-    fn load(self: *Level) void {
+    pub fn load(self: *Level) void {
         const dis = try std.fs.cwd().openFile("level.dat", .{});
         defer dis.close();
 
@@ -47,19 +54,16 @@ pub const Level = struct {
         }
     }
 
-    fn save(self: *Level) void {
+    pub fn save(self: *Level) void {
         const dos = try std.fs.cwd().openFile("level.dat", .{});
         defer dos.close();
 
         dos.write(self.blocks);
     }
 
-    fn calcLightDepths(self: *Level, x0: i32, y0: i32, x1: i32, y1: i32) void {
-        var x: i32 = 0;
-        var z: i32 = 0;
-
-        while (x < x0 + x1) : (x += 1) {
-            while (z < y0 + y1) : (z += 1) {
+    pub fn calcLightDepths(self: *Level, x0: i32, y0: i32, x1: i32, y1: i32) void {
+        for (0..@as(usize, @intCast(x0 + x1))) |x| {
+            for (0..@as(usize, @intCast(y0 + y1))) |z| {
                 const oldDepth: i32 = self.lightDepths[x + z * self.width];
                 var y: i32 = self.depth - 1;
 
@@ -79,18 +83,18 @@ pub const Level = struct {
         }
     }
 
-    fn addListener(self: *Level, levelListener: *LevelListener) void {
+    pub fn addListener(self: *Level, levelListener: *LevelListener) void {
         self.levelListeners.append(levelListener);
     }
 
-    fn removeListener(self: *Level, levelListener: *LevelListener) void {
+    pub fn removeListener(self: *Level, levelListener: *LevelListener) void {
         const llPtr: *LevelListener = levelListener;
         var i: i32 = 0;
         while (llPtr != self.levelListeners.items[i]) : (i += 1) {}
         self.levelListeners.orderedRemove(i);
     }
 
-    fn isTile(self: *Level, x: i32, y: i32, z: i32) bool {
+    pub fn isTile(self: *Level, x: i32, y: i32, z: i32) bool {
         if (x < 0 or y < 0 or z < 0 or x >= self.width or y >= self.depth or z >= self.height) {
             return false;
         }
@@ -98,15 +102,15 @@ pub const Level = struct {
         return self.blocks[(y * self.height + z) * self.width + x] == 1;
     }
 
-    fn isSolidTile(self: *Level, x: i32, y: i32, z: i32) bool {
+    pub fn isSolidTile(self: *Level, x: i32, y: i32, z: i32) bool {
         return self.isTile(x, y, z);
     }
 
-    fn isLightBlocker(self: *Level, x: i32, y: i32, z: i32) bool {
+    pub fn isLightBlocker(self: *Level, x: i32, y: i32, z: i32) bool {
         return self.isSolidTile(x, y, z);
     }
 
-    fn getCubes(self: *Level, aABB: AABB) std.ArrayList(AABB) {
+    pub fn getCubes(self: *Level, aABB: AABB) std.ArrayList(AABB) {
         const aABBs = std.ArrayList(AABB).init(std.heap.page_allocator);
 
         var x0: i32 = aABB.x0;
@@ -123,12 +127,9 @@ pub const Level = struct {
         if (y1 > self.depth)  y1 = self.depth;
         if (z1 > self.height) z1 = self.height;
 
-        var x: i32 = 0;
-        var y: i32 = 0;
-        var z: i32 = 0;
-        while (x < x1) : (x += 1) {
-            while (y < y1) : (y += 1) {
-                while (z < z1) : (z += 1) {
+        for (x0..x1) |x| {
+            for (y0..y1) |y| {
+                for (z0..z1) |z| {
                     if (self.isSolidTile(x, y, z)) {
                         aABBs.append(AABB{.x0 = x, .y0 = y, .z0 = z, .x1 = x + 1, .y1 = y + 1, .z1 = z + 1});
                     }
@@ -139,7 +140,7 @@ pub const Level = struct {
         return aABBs;
     }
 
-    fn getBrightness(self: *Level, x: i32, y: i32, z: i32) f32 {
+    pub fn getBrightness(self: *Level, x: i32, y: i32, z: i32) f32 {
         const dark: f32 = 0.8;
         const light: f32 = 1.0;
 
@@ -152,7 +153,7 @@ pub const Level = struct {
         return light;
     }
 
-    fn setTile(self: *Level, x: i32, y: i32, z: i32, typ: i32) void {
+    pub fn setTile(self: *Level, x: i32, y: i32, z: i32, typ: i32) void {
         if (x < 0 or y < 0 or z < 0 or x >= self.width or y >= self.depth or z >= self.height) {
             return;
         }

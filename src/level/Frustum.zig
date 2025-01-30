@@ -4,10 +4,10 @@ const GL = @import("glfw3");
 const AABB = @import("../phys/AABB.zig").AABB;
 
 const FDir = enum(i32) { RIGHT, LEFT, BOTTOM, TOP, BACK, FRONT };
-
 const FCor = enum(i32) { A, B, C, D };
 
-const frustum: Frustum = Frustum.new();
+var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+const allocator = gpa.allocator();
 
 pub const Frustum = struct {
     m_Frustum: [6][4]f32,
@@ -15,7 +15,14 @@ pub const Frustum = struct {
     modl: [16]f32,
     clip: [16]f32,
 
-    fn getFrustum() Frustum {
+    pub var frustum: *Frustum = undefined;
+
+    pub fn new() *Frustum {
+        const f: *Frustum = try allocator.create(Frustum);
+        return f;
+    }
+
+    pub fn getFrustum() *Frustum {
         frustum.calculateFrustum();
         return frustum;
     }
@@ -88,7 +95,7 @@ pub const Frustum = struct {
         normalizePlane(self.m_Frustum, 5);
     }
 
-    fn pointInFrustum(self: *Frustum, x: f32, y: f32, z: f32) bool {
+    pub fn pointInFrustum(self: *Frustum, x: f32, y: f32, z: f32) bool {
         inline for (std.meta.fields(FDir)) |i| {
             if (self.m_Frustum[i][FCor.A] * x + self.m_Frustum[i][FCor.B] * y + self.m_Frustum[i][FCor.C] * z + self.m_Frustum[i][FCor.D] <= 0.0) {
                 return false;
@@ -97,7 +104,7 @@ pub const Frustum = struct {
         return true;
     }
 
-    fn sphereInFrustum(self: *Frustum, x: f32, y: f32, z: f32, radius: f32) bool {
+    pub fn sphereInFrustum(self: *Frustum, x: f32, y: f32, z: f32, radius: f32) bool {
         inline for (std.meta.fields(FDir)) |i| {
             if (self.m_Frustum[i][FCor.A] * x + self.m_Frustum[i][FCor.B] * y + self.m_Frustum[i][FCor.C] * z + self.m_Frustum[i][FCor.D] <= -radius) {
                 return false;
@@ -106,7 +113,7 @@ pub const Frustum = struct {
         return true;
     }
 
-    fn cubeFullyInFrustum(self: *Frustum, x1: f32, y1: f32, z1: f32, x2: f32, y2: f32, z2: f32) bool {
+    pub fn cubeFullyInFrustum(self: *Frustum, x1: f32, y1: f32, z1: f32, x2: f32, y2: f32, z2: f32) bool {
         inline for (std.meta.fields(FDir)) |i| {
             if (self.m_Frustum[i][FCor.A] * x1 + self.m_Frustum[i][FCor.B] * y1 + self.m_Frustum[i][FCor.C] * z1 + self.m_Frustum[i][FCor.D] <= 0.0) {
                 return false;
@@ -136,16 +143,24 @@ pub const Frustum = struct {
         return true;
     }
 
-    fn cubeInFrustum(self: *Frustum, x1: f32, y1: f32, z1: f32, x2: f32, y2: f32, z2: f32) bool {
+    pub fn cubeInFrustum(self: *Frustum, x1: f32, y1: f32, z1: f32, x2: f32, y2: f32, z2: f32) bool {
         inline for (std.meta.fields(FDir)) |i| {
-            if (self.m_Frustum[i][FCor.A] * x1 + self.m_Frustum[i][FCor.B] * y1 + self.m_Frustum[i][FCor.C] * z1 + self.m_Frustum[i][FCor.D] <= 0.0 or self.m_Frustum[i][FCor.A] * x2 + self.m_Frustum[i][FCor.B] * y1 + self.m_Frustum[i][FCor.C] * z1 + self.m_Frustum[i][FCor.D] <= 0.0 or self.m_Frustum[i][FCor.A] * x1 + self.m_Frustum[i][FCor.B] * y2 + self.m_Frustum[i][FCor.C] * z1 + self.m_Frustum[i][FCor.D] <= 0.0 or self.m_Frustum[i][FCor.A] * x2 + self.m_Frustum[i][FCor.B] * y2 + self.m_Frustum[i][FCor.C] * z1 + self.m_Frustum[i][FCor.D] <= 0.0 or self.m_Frustum[i][FCor.A] * x1 + self.m_Frustum[i][FCor.B] * y1 + self.m_Frustum[i][FCor.C] * z2 + self.m_Frustum[i][FCor.D] <= 0.0 or self.m_Frustum[i][FCor.A] * x2 + self.m_Frustum[i][FCor.B] * y1 + self.m_Frustum[i][FCor.C] * z2 + self.m_Frustum[i][FCor.D] <= 0.0 or self.m_Frustum[i][FCor.A] * x1 + self.m_Frustum[i][FCor.B] * y2 + self.m_Frustum[i][FCor.C] * z2 + self.m_Frustum[i][FCor.D] <= 0.0 or self.m_Frustum[i][FCor.A] * x2 + self.m_Frustum[i][FCor.B] * y2 + self.m_Frustum[i][FCor.C] * z2 + self.m_Frustum[i][FCor.D] <= 0.0) {
+            if (self.m_Frustum[i][FCor.A] * x1 + self.m_Frustum[i][FCor.B] * y1 + self.m_Frustum[i][FCor.C] * z1 + self.m_Frustum[i][FCor.D] <= 0.0 or
+                self.m_Frustum[i][FCor.A] * x2 + self.m_Frustum[i][FCor.B] * y1 + self.m_Frustum[i][FCor.C] * z1 + self.m_Frustum[i][FCor.D] <= 0.0 or
+                self.m_Frustum[i][FCor.A] * x1 + self.m_Frustum[i][FCor.B] * y2 + self.m_Frustum[i][FCor.C] * z1 + self.m_Frustum[i][FCor.D] <= 0.0 or
+                self.m_Frustum[i][FCor.A] * x2 + self.m_Frustum[i][FCor.B] * y2 + self.m_Frustum[i][FCor.C] * z1 + self.m_Frustum[i][FCor.D] <= 0.0 or
+                self.m_Frustum[i][FCor.A] * x1 + self.m_Frustum[i][FCor.B] * y1 + self.m_Frustum[i][FCor.C] * z2 + self.m_Frustum[i][FCor.D] <= 0.0 or
+                self.m_Frustum[i][FCor.A] * x2 + self.m_Frustum[i][FCor.B] * y1 + self.m_Frustum[i][FCor.C] * z2 + self.m_Frustum[i][FCor.D] <= 0.0 or
+                self.m_Frustum[i][FCor.A] * x1 + self.m_Frustum[i][FCor.B] * y2 + self.m_Frustum[i][FCor.C] * z2 + self.m_Frustum[i][FCor.D] <= 0.0 or
+                self.m_Frustum[i][FCor.A] * x2 + self.m_Frustum[i][FCor.B] * y2 + self.m_Frustum[i][FCor.C] * z2 + self.m_Frustum[i][FCor.D] <= 0.0) {
+                    
                 return false;
             }
         }
         return true;
     }
 
-    fn cubeInFrustumA(self: *Frustum, aabb: AABB) bool {
+    pub fn cubeInFrustumA(self: *Frustum, aabb: AABB) bool {
         return self.cubeInFrustum(aabb.x0, aabb.y0, aabb.z0, aabb.x1, aabb.y1, aabb.z1);
     }
 };

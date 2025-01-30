@@ -4,7 +4,7 @@ pub const AABB = struct {
     
     epsilon: f32 = 1.0,
 
-    fn expand(self: *AABB, xa: f32, ya: f32, za: f32) AABB {
+    pub fn expand(self: *AABB, xa: f32, ya: f32, za: f32) AABB {
         var _x0: f32 = self.x0;
         var _y0: f32 = self.y0;
         var _z0: f32 = self.z0;
@@ -22,7 +22,7 @@ pub const AABB = struct {
         return AABB(_x0, _y0, _z0, _x1, _y1, _z1);
     }
 
-    fn grow(self: *AABB, xa: f32, ya: f32, za: f32) AABB {
+    pub fn grow(self: *AABB, xa: f32, ya: f32, za: f32) AABB {
         const _x0: f32 = self.x0 - xa;
         const _y0: f32 = self.y0 - ya;
         const _z0: f32 = self.z0 - za;
@@ -33,7 +33,7 @@ pub const AABB = struct {
         return AABB(_x0, _y0, _z0, _x1, _y1, _z1);
     }
 
-    fn clipXCollide(self: *AABB, c: AABB, xa: f32) f32 {
+    pub fn clipXCollide(self: *AABB, c: AABB, xa: f32) f32 {
         if (c.y1 <= self.y0 or c.y0 >= self.y1) return xa;
         if (c.z1 <= self.z0 or c.z0 >= self.z1) return xa;
 
@@ -50,7 +50,7 @@ pub const AABB = struct {
         return xa;
     }
 
-    fn clipYCollide(self: *AABB, c: AABB, ya: f32) f32 {
+    pub fn clipYCollide(self: *AABB, c: AABB, ya: f32) f32 {
         if (c.x1 <= self.x0 or c.x0 >= self.x1) return ya;
         if (c.z1 <= self.z0 or c.z0 >= self.z1) return ya;
 
@@ -67,7 +67,7 @@ pub const AABB = struct {
         return ya;
     }
 
-    fn clipZCollide(self: *AABB, c: AABB, za: f32) f32 {
+    pub fn clipZCollide(self: *AABB, c: AABB, za: f32) f32 {
         if (c.x1 <= self.x0 or c.x0 >= self.x1) return za;
         if (c.y1 <= self.y0 or c.y0 >= self.y1) return za;
 
@@ -84,7 +84,7 @@ pub const AABB = struct {
         return za;
     }
 
-    fn intersects(self: *AABB, c: AABB) bool {
+    pub fn intersects(self: *AABB, c: AABB) bool {
         if (c.x1 <= self.x0 or c.x0 >= self.x1) return false;
         if (c.y1 <= self.y0 or c.y0 >= self.y1) return false;
         if (c.z1 <= self.z0 or c.z0 >= self.z1) return false;
@@ -92,7 +92,7 @@ pub const AABB = struct {
         return true;
     }
 
-    fn move(self: *AABB, xa: f32, ya: f32, za: f32) void {
+    pub fn move(self: *AABB, xa: f32, ya: f32, za: f32) void {
         self.x0 += xa; self.y0 += ya; self.z0 += za;
         self.x1 += xa; self.y1 += ya; self.z1 += za;
     }

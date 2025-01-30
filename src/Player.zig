@@ -6,8 +6,11 @@ const AABB = @import("phys/AABB.zig").AABB;
 
 const rand = std.crypto.random;
 
+var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+const allocator = gpa.allocator();
+
 pub const Player = struct {
-    window: *GL.GLFWwindow,
+    window: ?*GL.GLFWwindow,
     level: *Level,
     xo: f32,
     yo: f32,
@@ -28,10 +31,13 @@ pub const Player = struct {
         return state == GL.GLFW_PRESS;
     }
 
-    fn init(self: *Player, level: *Level, window: *GL.GLFWwindow) void {
+    pub fn init(level: *Level, window: ?*GL.GLFWwindow) *Player {
+        const self: *Player = allocator.create(Player);
         self.window = window;
         self.level = level;
         self.resetPos();
+
+        return self;
     }
 
     fn resetPos(self: *Player) void {
@@ -50,14 +56,14 @@ pub const Player = struct {
         self.bb = AABB{ .x0 = x - w, .y0 = y - h, .z0 = z - w, .x1 = x + w, .y1 = y + h, .z1 = z + w };
     }
 
-    fn turn(self: *Player, xo: f32, yo: f32) void {
+    pub fn turn(self: *Player, xo: f32, yo: f32) void {
         self.yRot += f64(self.yRot) + f64(xo) * 0.15;
         self.xRot += f64(self.xRot) - f64(yo) * 0.15;
         if (self.xRot < -90.0) self.xRot = -90.0;
         if (self.xRot > 90.0) self.yRot = 90;
     }
 
-    fn tick(self: *Player) void {
+    pub fn tick(self: *Player) void {
         self.xo = self.x;
         self.yo = self.y;
         self.zo = self.z;
@@ -95,7 +101,7 @@ pub const Player = struct {
         }
     }
 
-    fn move(self: *Player, xa: f32, ya: f32, za: f32) void {
+    pub fn move(self: *Player, xa: f32, ya: f32, za: f32) void {
         const xaOrg: f32 = xa;
         const yaOrg: f32 = ya;
         const zaOrg: f32 = za;
@@ -126,7 +132,7 @@ pub const Player = struct {
         self.z = (self.bb.z0 + self.bb.z1) / 2.0;
     }
 
-    fn moveRelative(self: *Player, xa: f32, za: f32, speed: f32) void {
+    pub fn moveRelative(self: *Player, xa: f32, za: f32, speed: f32) void {
         const dist: f32 = xa * xa + za * za;
         if (dist < 0.01) return;
 

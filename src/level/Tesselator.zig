@@ -14,7 +14,7 @@ pub const Tesselator = struct {
     hasColor: bool = false,
     hasTexture: bool = false,
 
-    fn flush(self: *Tesselator) void {
+    pub fn flush(self: *Tesselator) void {
         GL.glVertexPointer(3, GL.GL_FLOAT, 0, self.vertexBuffer);
         if (self.hasTexture)
             GL.glTexCoordPointer(2, GL.GL_FLOAT, 0, self.texCoordBuffer);
@@ -45,26 +45,26 @@ pub const Tesselator = struct {
         self.colorBuffer = [_]f32{0} ** (3 * MAX_VERTICES);
     }
 
-    fn init(self: *Tesselator) void {
+    pub fn init(self: *Tesselator) void {
         self.clear();
         self.hasColor = false;
         self.hasTexture = false;
     }
 
-    fn tex(self: *Tesselator, u: f32, v: f32) void {
+    pub fn tex(self: *Tesselator, u: f32, v: f32) void {
         self.hasTexture = true;
         self.u = u;
         self.v = v;
     }
 
-    fn color(self: *Tesselator, r: f32, g: f32, b: f32) void {
+    pub fn color(self: *Tesselator, r: f32, g: f32, b: f32) void {
         self.hasColor = true;
         self.r = r;
         self.g = g;
         self.b = b;
     }
 
-    fn vertex(self: *Tesselator, x: f32, y: f32, z: f32) void {
+    pub fn vertex(self: *Tesselator, x: f32, y: f32, z: f32) void {
         self.vertexBuffer[self.vertices * 3 + 0] = x;
         self.vertexBuffer[self.vertices * 3 + 1] = y;
         self.vertexBuffer[self.vertices * 3 + 2] = z;
