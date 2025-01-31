@@ -24,13 +24,14 @@ pub const Chunk = struct {
     dirty: bool = true,
     lists: i32 = -1,
     texture: i32 = Textures.loadTexture("/terrain.png", GL.GL_NEAREST),
-    t: Tesselator = Tesselator{},
+    t: *Tesselator,
 
     pub var rebuiltThisFrame: i32 = 0;
     pub var updates: i32 = 0;
 
     pub fn new(level: *Level, x0: i32, y0: i32, z0: i32, x1: i32, y1: i32, z1: i32) !*Chunk {
         const c: *Chunk = try allocator.create(Chunk);
+        c.t = try allocator.create(Tesselator);
         c.level = level;
         c.x0 = x0; c.y0 = y0; c.z0 = z0;
         c.x1 = x1; c.y1 = y1; c.z1 = z1;
@@ -53,22 +54,22 @@ pub const Chunk = struct {
         Chunk.updates += 1;
         Chunk.rebuiltThisFrame += 1;
 
-        GL.glNewList(self.lists + layer, GL.GL_COMPILE);
+        GL.glNewList(@intCast(self.lists + layer), GL.GL_COMPILE);
         GL.glEnable(GL.GL_TEXTURE_2D);
-        GL.glBindTexture(GL.GL_TEXTURE_2D, self.texture);
+        GL.glBindTexture(GL.GL_TEXTURE_2D, @intCast(self.texture));
 
         self.t.init();
 
         var tiles: i32 = 0;
-        for (self.x0..self.x1) |x| {
-            for (self.y0..self.y1) |y| {
-                for (self.z0..self.z1) |z| {
-                    const tex: i32 = if (y == self.level.depth * 2 / 3) 0 else 1;
+        for (@intCast(self.x0)..@intCast(self.x1)) |x| {
+            for (@intCast(self.y0)..@intCast(self.y1)) |y| {
+                for (@intCast(self.z0)..@intCast(self.z1)) |z| {
+                    const tex: i32 = if (y == @divFloor(self.level.depth * 2, 3)) 0 else 1;
                     tiles += 1;
                     if (tex == 0) {
-                        Tiles.rock.render(self.t, self.level, layer, x, y, z);
+                        Tiles.rock.render(self.t, self.level, layer, @intCast(x), @intCast(y), @intCast(z));
                     } else {
-                        Tiles.grass.render(self.t, self.level, layer, x, y, z);
+                        Tiles.grass.render(self.t, self.level, layer, @intCast(x), @intCast(y), @intCast(z));
                     }
                 }
             }
@@ -83,7 +84,7 @@ pub const Chunk = struct {
             self.rebuild(0);
             self.rebuild(1);
         }
-        GL.glCallList(self.lists + layer);
+        GL.glCallList(@intCast(self.lists + layer));
     }
 
     pub fn setDirty(self: *Chunk) void {

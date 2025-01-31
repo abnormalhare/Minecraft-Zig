@@ -14,7 +14,7 @@ const Frustum = @import("level/Frustum.zig").Frustum;
 
 const FULLSCREEN_MODE: bool = false;
 
-var gpa = std.heap.GeneralPurposeAllocator(.{ .verbose_log = true }){};
+var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 const allocator = gpa.allocator();
 
 pub const RubyDung = struct {
@@ -25,7 +25,7 @@ pub const RubyDung = struct {
     level: *Level,
     levelRenderer: *LevelRenderer,
     player: *Player,
-    hitResult: ?*HitResult,
+    hitResult: ?*HitResult = null,
 
     viewportBuffer: [16]i32,
     selectBuffer: [2000]u32,
@@ -35,44 +35,50 @@ pub const RubyDung = struct {
     lastMouseX: f64 = 0.0,
     lastMouseY: f64 = 0.0,
 
-    fn mouseButtonCallback(self: *RubyDung, window: ?*GL.GLFWwindow, button: i32, action: i32, mods: i32) void {
+    fn mouseButtonCallback(self: *RubyDung, window: *GL.GLFWwindow, button: i32, action: i32, mods: i32) void {
         if (button == GL.GLFW_MOUSE_BUTTON_RIGHT and action == GL.GLFW_PRESS) {
             if (self.hitResult != null) {
-                self.level.setTile(self.hitResult.x, self.hitResult.y, self.hitResult.z, 0);
+                self.level.setTile(self.hitResult.?.x, self.hitResult.?.y, self.hitResult.?.z, 0);
             }
         }
         if (button == GL.GLFW_MOUSE_BUTTON_LEFT and action == GL.GLFW_PRESS) {
             if (self.hitResult != null) {
-                var x: i32 = self.hitResult.x;
-                var y: i32 = self.hitResult.y;
-                var z: i32 = self.hitResult.z;
+                var x: i32 = self.hitResult.?.x;
+                var y: i32 = self.hitResult.?.y;
+                var z: i32 = self.hitResult.?.z;
 
-                if (self.hitResult.f == 0) y -= 1;
-                if (self.hitResult.f == 1) y += 1;
-                if (self.hitResult.f == 2) z -= 1;
-                if (self.hitResult.f == 3) z += 1;
-                if (self.hitResult.f == 4) x -= 1;
-                if (self.hitResult.f == 5) x += 1;
+                const f: i32 = self.hitResult.?.f;
+
+                if (f == 0) y -= 1;
+                if (f == 1) y += 1;
+                if (f == 2) z -= 1;
+                if (f == 3) z += 1;
+                if (f == 4) x -= 1;
+                if (f == 5) x += 1;
 
                 self.level.setTile(x, y, z, 1);
             }
         }
-        window;
-        mods;
+        _ = window;
+        _ = mods;
     }
 
-    fn keyCallback(self: *RubyDung, window: ?*GL.GLFWwindow, key: i32, scancode: i32, action: i32, mods: i32) void {
+    fn keyCallback(self: *RubyDung, window: *GL.GLFWwindow, key: i32, scancode: i32, action: i32, mods: i32) void {
         if (key == GL.GLFW_KEY_ESCAPE and action == GL.GLFW_PRESS) {
-            self.level.save();
+            self.level.save() catch |err| {
+                if (err != error.CouldNotWriteImage) {
+                    std.debug.print("Failed to save level\n", .{});
+                }
+            };
             GL.glfwSetWindowShouldClose(window, GL.GLFW_TRUE);
         }
-        scancode;
-        mods;
+        _ = scancode;
+        _ = mods;
     }
 
     fn setDisplayMode(self: *RubyDung, width: i32, height: i32) void {
-        if (GL.glfwInit() != 0) {
-            std.debug.print("Failed to initialize GLFW", .{});
+        if (GL.glfwInit() == 0) {
+            std.debug.print("Failed to initialize GLFW\n", .{});
             std.process.exit(1);
         }
 
@@ -82,7 +88,7 @@ pub const RubyDung = struct {
         self.window = GL.glfwCreateWindow(width, height, "Game", null, null);
         if (self.window == null) {
             GL.glfwTerminate();
-            std.debug.print("Failed to create window", .{});
+            std.debug.print("Failed to create window\n", .{});
             std.process.exit(1);
         }
         GL.glfwMakeContextCurrent(self.window);
@@ -200,7 +206,7 @@ pub const RubyDung = struct {
     fn setupCamera(self: *RubyDung, a: f32) void {
         GL.glMatrixMode(GL.GL_PROJECTION);
         GL.glLoadIdentity();
-        GLU.gluPerspective(70.0, self.width / f64(self.height), 0.05, 1000.0);
+        GLU.gluPerspective(70.0, @floatFromInt(@divFloor(self.width, self.height)), 0.05, 1000.0);
         GL.glMatrixMode(GL.GL_MODELVIEW);
         GL.glLoadIdentity();
         self.moveCameraToPlayer(a);
@@ -251,12 +257,14 @@ pub const RubyDung = struct {
         }
 
         if (self.hitResult != null) {
-            allocator.destroy(self.hitResult);
+            std.debug.print("OLD hitresult: {*}\n", .{self.hitResult});
+            const res: *HitResult = self.hitResult.?;
+            allocator.destroy(res);
+            self.hitResult = null;
         }
         if (hitNameCount > 0) {
             self.hitResult = try HitResult.new(names[0], names[1], names[2], names[3], names[4]);
-        } else {
-            self.hitResult = null;
+            std.debug.print("NEW hitresult: {*}\n", .{self.hitResult});
         }
     }
 
@@ -302,9 +310,9 @@ pub fn main() !void {
 }
 
 fn mouse_button_callback(window: ?*GL.GLFWwindow, button: c_int, action: c_int, mods: c_int) callconv(.C) void {
-    rd.mouseButtonCallback(window, @as(i32, button), @as(i32, action), @as(i32, mods));
+    rd.mouseButtonCallback(window.?, @as(i32, button), @as(i32, action), @as(i32, mods));
 }
 
 fn key_callback(window: ?*GL.GLFWwindow, key: c_int, scancode: c_int, action: c_int, mods: c_int) callconv(.C) void {
-    rd.keyCallback(window, @as(i32, key), @as(i32, scancode), @as(i32, action), @as(i32, mods));
+    rd.keyCallback(window.?, @as(i32, key), @as(i32, scancode), @as(i32, action), @as(i32, mods));
 }

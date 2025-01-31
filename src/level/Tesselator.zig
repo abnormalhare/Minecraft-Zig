@@ -15,11 +15,11 @@ pub const Tesselator = struct {
     hasTexture: bool = false,
 
     pub fn flush(self: *Tesselator) void {
-        GL.glVertexPointer(3, GL.GL_FLOAT, 0, self.vertexBuffer);
+        GL.glVertexPointer(3, GL.GL_FLOAT, 0, &self.vertexBuffer);
         if (self.hasTexture)
-            GL.glTexCoordPointer(2, GL.GL_FLOAT, 0, self.texCoordBuffer);
+            GL.glTexCoordPointer(2, GL.GL_FLOAT, 0, &self.texCoordBuffer);
         if (self.hasColor)
-            GL.glColorPointer(3, GL.GL_FLOAT, 0, self.colorBuffer);
+            GL.glColorPointer(3, GL.GL_FLOAT, 0, &self.colorBuffer);
 
         GL.glEnableClientState(GL.GL_VERTEX_ARRAY);
         if (self.hasTexture)
@@ -65,19 +65,19 @@ pub const Tesselator = struct {
     }
 
     pub fn vertex(self: *Tesselator, x: f32, y: f32, z: f32) void {
-        self.vertexBuffer[self.vertices * 3 + 0] = x;
-        self.vertexBuffer[self.vertices * 3 + 1] = y;
-        self.vertexBuffer[self.vertices * 3 + 2] = z;
+        self.vertexBuffer[@intCast(self.vertices * 3 + 0)] = x;
+        self.vertexBuffer[@intCast(self.vertices * 3 + 1)] = y;
+        self.vertexBuffer[@intCast(self.vertices * 3 + 2)] = z;
 
         if (self.hasTexture) {
-            self.vertexBuffer[self.vertices * 2 + 0] = self.u;
-            self.vertexBuffer[self.vertices * 2 + 1] = self.v;
+            self.vertexBuffer[@intCast(self.vertices * 2 + 0)] = self.u;
+            self.vertexBuffer[@intCast(self.vertices * 2 + 1)] = self.v;
         }
 
         if (self.hasColor) {
-            self.vertexBuffer[self.vertices * 3 + 0] = self.r;
-            self.vertexBuffer[self.vertices * 3 + 1] = self.g;
-            self.vertexBuffer[self.vertices * 3 + 2] = self.b;
+            self.vertexBuffer[@intCast(self.vertices * 3 + 0)] = self.r;
+            self.vertexBuffer[@intCast(self.vertices * 3 + 1)] = self.g;
+            self.vertexBuffer[@intCast(self.vertices * 3 + 2)] = self.b;
         }
 
         self.vertices += 1;

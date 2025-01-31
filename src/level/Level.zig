@@ -43,7 +43,7 @@ pub const Level = struct {
     }
 
     pub fn load(self: *Level) !void {
-        const dis = try std.fs.cwd().openFile("level.dat", .{});
+        const dis = try std.fs.cwd().createFile("level.dat", .{ .read = true });
         defer dis.close();
 
         _ = try dis.readAll(self.blocks);
@@ -55,7 +55,7 @@ pub const Level = struct {
     }
 
     pub fn save(self: *Level) !void {
-        const dos = try std.fs.cwd().openFile("level.dat", .{});
+        const dos = try std.fs.cwd().createFile("level.dat", .{});
         defer dos.close();
 
         _ = try dos.write(self.blocks);
@@ -99,7 +99,7 @@ pub const Level = struct {
             return false;
         }
         
-        return self.blocks[(y * self.height + z) * self.width + x] == 1;
+        return self.blocks[@intCast((y * self.height + z) * self.width + x)] == 1;
     }
 
     pub fn isSolidTile(self: *Level, x: i32, y: i32, z: i32) bool {
@@ -111,14 +111,14 @@ pub const Level = struct {
     }
 
     pub fn getCubes(self: *Level, aABB: AABB) std.ArrayList(AABB) {
-        const aABBs = std.ArrayList(AABB).init(std.heap.page_allocator);
+        var aABBs = std.ArrayList(AABB).init(std.heap.page_allocator);
 
-        var x0: i32 = aABB.x0;
-        var x1: i32 = aABB.x1 + 1.0;
-        var y0: i32 = aABB.y0;
-        var y1: i32 = aABB.y1 + 1.0;
-        var z0: i32 = aABB.z0;
-        var z1: i32 = aABB.z1 + 1.0;
+        var x0: i32 = @intFromFloat(aABB.x0);
+        var x1: i32 = @intFromFloat(aABB.x1 + 1.0);
+        var y0: i32 = @intFromFloat(aABB.y0);
+        var y1: i32 = @intFromFloat(aABB.y1 + 1.0);
+        var z0: i32 = @intFromFloat(aABB.z0);
+        var z1: i32 = @intFromFloat(aABB.z1 + 1.0);
 
         if (x0 < 0) x0 = 0;
         if (y0 < 0) y0 = 0;
@@ -127,11 +127,19 @@ pub const Level = struct {
         if (y1 > self.depth)  y1 = self.depth;
         if (z1 > self.height) z1 = self.height;
 
-        for (x0..x1) |x| {
-            for (y0..y1) |y| {
-                for (z0..z1) |z| {
-                    if (self.isSolidTile(x, y, z)) {
-                        aABBs.append(AABB{.x0 = x, .y0 = y, .z0 = z, .x1 = x + 1, .y1 = y + 1, .z1 = z + 1});
+        for (@intCast(x0)..@intCast(x1)) |x| {
+            for (@intCast(y0)..@intCast(y1)) |y| {
+                for (@intCast(z0)..@intCast(z1)) |z| {
+                    if (self.isSolidTile(@intCast(x), @intCast(y), @intCast(z))) {
+                        const aabb: AABB = AABB{
+                            .x0 = @floatFromInt(x), .y0 = @floatFromInt(y), .z0 = @floatFromInt(z),
+                            .x1 = @floatFromInt(x + 1), .y1 = @floatFromInt(y + 1), .z1 = @floatFromInt(z + 1)
+                        };
+                        aABBs.append(aabb) catch |err| {
+                            if (err == error.OutOfMemory) {
+                                std.debug.print("aabb's failed to append", .{});
+                            }
+                        };
                     }
                 }
             }
@@ -147,7 +155,7 @@ pub const Level = struct {
         if (x < 0 or y < 0 or z < 0 or x >= self.width or y >= self.depth or z >= self.height) {
             return light;
         }
-        if (y < self.lightDepths[x + z * self.width]) {
+        if (y < self.lightDepths[@intCast(x + z * self.width)]) {
             return dark;
         }
         return light;
@@ -157,11 +165,11 @@ pub const Level = struct {
         if (x < 0 or y < 0 or z < 0 or x >= self.width or y >= self.depth or z >= self.height) {
             return;
         }
-        self.blocks[(y * self.height + z) * self.width + x] = typ;
+        self.blocks[@intCast((y * self.height + z) * self.width + x)] = @intCast(typ);
         self.calcLightDepths(x, z, 1, 1);
 
         for (self.levelListeners.items) |listener| {
-            listener.tileChanged(x, y, z);
+            listener.tileChanged(listener, x, y, z);
         }
     }
 };

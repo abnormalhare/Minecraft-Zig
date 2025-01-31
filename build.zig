@@ -45,12 +45,13 @@ pub fn build(b: *std.Build) void {
     });
     exe.root_module.addImport("glu", glu.createModule());
 
-    // exe.addIncludePath(b.path("./include/"));
-    // exe.addLibraryPath(b.path("./lib/"));
-
-    // exe.linkSystemLibrary("glfw3");
-    // exe.linkSystemLibrary("opengl32");
-    // exe.linkSystemLibrary("glu32");
+    exe.addLibraryPath(b.path("./lib/"));
+    exe.linkSystemLibrary("glfw3");
+    exe.linkSystemLibrary("opengl32");
+    exe.linkSystemLibrary("glu32");
+    exe.linkSystemLibrary("gdi32");
+    exe.linkSystemLibrary("shlwapi");
+    exe.linkLibC();
 
     b.installArtifact(exe);
 

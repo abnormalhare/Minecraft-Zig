@@ -106,26 +106,30 @@ pub const Player = struct {
         const yaOrg: f32 = ya;
         const zaOrg: f32 = za;
         const aABBs = self.level.getCubes(self.bb.expand(xa, ya, za));
+        var _xa: f32 = xa;
+        var _ya: f32 = ya;
+        var _za: f32 = za;
 
-        for (aABBs.items) |i| {
-            ya = i.clipYCollide(self.bb, ya);
+
+        for (aABBs.items) |*i| {
+            _ya = i.clipYCollide(self.bb, _ya);
         }
-        self.bb.move(0.0, ya, 0.0);
+        self.bb.move(0.0, _ya, 0.0);
 
-        for (aABBs.items) |i| {
-            xa = i.clipXCollide(self.bb, xa);
+        for (aABBs.items) |*i| {
+            _xa = i.clipXCollide(self.bb, _xa);
         }
-        self.bb.move(xa, 0.0, 0.0);
+        self.bb.move(_xa, 0.0, 0.0);
 
-        for (aABBs.items) |i| {
-            za = i.clipZCollide(self.bb, za);
+        for (aABBs.items) |*i| {
+            _za = i.clipZCollide(self.bb, _za);
         }
-        self.bb.move(0.0, 0.0, za);
+        self.bb.move(0.0, 0.0, _za);
 
-        self.onGround = (yaOrg != ya and yaOrg < 0.0);
-        if (xaOrg != xa) self.xd = 0.0;
-        if (yaOrg != ya) self.yd = 0.0;
-        if (zaOrg != za) self.za = 0.0;
+        self.onGround = (yaOrg != _ya and yaOrg < 0.0);
+        if (xaOrg != _xa) self.xd = 0.0;
+        if (yaOrg != _ya) self.yd = 0.0;
+        if (zaOrg != _za) self.zd = 0.0;
 
         self.x = (self.bb.x0 + self.bb.x1) / 2.0;
         self.y = (self.bb.y0) + 1.62;
@@ -133,15 +137,16 @@ pub const Player = struct {
     }
 
     pub fn moveRelative(self: *Player, xa: f32, za: f32, speed: f32) void {
-        const dist: f32 = xa * xa + za * za;
+        var dist: f32 = xa * xa + za * za;
         if (dist < 0.01) return;
 
         dist = speed / std.math.sqrt(dist);
-        xa *= dist;
-        za *= dist;
-        const sin: f32 = std.math.sin(@as(f64, self.yRot) * std.math.pi / 180.0);
-        const cos: f32 = std.math.cos(@as(f64, self.yRot) * std.math.pi / 180.0);
-        self.xd += xa * cos - za * sin;
-        self.zd += za * cos + xa * sin;
+        const _xa = xa * dist;
+        const _za = za * dist;
+        const deg: f64 = @as(f64, @floatCast(self.yRot)) * std.math.pi / 180.0;
+        const sin: f32 = @floatCast(std.math.sin(deg));
+        const cos: f32 = @floatCast(std.math.cos(deg));
+        self.xd += _xa * cos - _za * sin;
+        self.zd += _za * cos + _xa * sin;
     }
 };

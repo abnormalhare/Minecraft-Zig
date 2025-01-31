@@ -66,38 +66,38 @@ pub const LevelRenderer = struct {
 
     pub fn render(self: *LevelRenderer, player: *Player, layer: i32) void {
         Chunk.rebuiltThisFrame = 0;
-        const frustum: Frustum = Frustum.getFrustum();
-        for (self.chunks) |i| {
-            if (frustum.cubeInFrustum(i.aabb)) {
+        const frustum: *Frustum = Frustum.getFrustum();
+        for (self.chunks) |*i| {
+            if (frustum.cubeInFrustumA(i.aabb)) {
                 i.render(layer);
             }
         }
-        player;
+        _ = player;
     }
 
     pub fn pick(self: *LevelRenderer, player: *Player) void {
         const r: f32 = 3.0;
         const box: AABB = player.bb.grow(r, r, r);
-        const x0: i32 = box.x0;
-        const x1: i32 = box.x1 + 1.0;
-        const y0: i32 = box.y0;
-        const y1: i32 = box.y1 + 1.0;
-        const z0: i32 = box.z0;
-        const z1: i32 = box.z1 + 1.0;
+        const x0: usize = @intFromFloat(box.x0);
+        const x1: usize = @intFromFloat(box.x1 + 1.0);
+        const y0: usize = @intFromFloat(box.y0);
+        const y1: usize = @intFromFloat(box.y1 + 1.0);
+        const z0: usize = @intFromFloat(box.z0);
+        const z1: usize = @intFromFloat(box.z1 + 1.0);
 
         GL.glInitNames();
         for (x0..x1) |x| {
-            GL.glPushName(x);
+            GL.glPushName(@intCast(x));
             for (y0..y1) |y| {
-                GL.glPushName(y);
+                GL.glPushName(@intCast(y));
                 for (z0..z1) |z| {
-                    GL.glPushName(z);
-                    if (self.level.isSolidTile(x, y, z)) {
+                    GL.glPushName(@intCast(z));
+                    if (self.level.isSolidTile(@intCast(x), @intCast(y), @intCast(z))) {
                         GL.glPushName(0);
                         for (0..6) |i| {
-                            GL.glPushName(i);
+                            GL.glPushName(@intCast(i));
                             self.t.init();
-                            Tiles.rock.renderFace(self.t, x, y, z, i);
+                            Tiles.rock.renderFace(self.t, @intCast(x), @intCast(y), @intCast(z), @intCast(i));
                             self.t.flush();
                             GL.glPopName();
                         }
@@ -114,7 +114,8 @@ pub const LevelRenderer = struct {
     pub fn renderHit(self: *LevelRenderer, h: *HitResult) void {
         GL.glEnable(GL.GL_BLEND);
         GL.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE);
-        GL.glColor4f(1.0, 1.0, 1.0, f32(std.math.sin(std.time.milliTimestamp() / 100.0)) * 0.2 + 0.4);
+        const currTime: f64 = @floatFromInt(std.time.milliTimestamp());
+        GL.glColor4f(1.0, 1.0, 1.0, @as(f32, @floatCast(std.math.sin(currTime / 100.0))) * 0.2 + 0.4);
         self.t.init();
         Tiles.rock.renderFace(self.t, h.x, h.y, h.z, h.f);
         self.t.flush();

@@ -19,7 +19,10 @@ pub const AABB = struct {
         if (za < 0.0) _z0 += za;
         if (za > 0.0) _z1 += za;
 
-        return AABB(_x0, _y0, _z0, _x1, _y1, _z1);
+        return AABB{
+            .x0 = _x0, .y0 = _y0, .z0 = _z0,
+            .x1 = _x1, .y1 = _y1, .z1 = _z1
+        };
     }
 
     pub fn grow(self: *AABB, xa: f32, ya: f32, za: f32) AABB {
@@ -30,58 +33,67 @@ pub const AABB = struct {
         const _y1: f32 = self.y1 + ya;
         const _z1: f32 = self.z1 + za;
 
-        return AABB(_x0, _y0, _z0, _x1, _y1, _z1);
+        return AABB{
+            .x0 = _x0, .y0 = _y0, .z0 = _z0,
+            .x1 = _x1, .y1 = _y1, .z1 = _z1
+        };
     }
 
     pub fn clipXCollide(self: *AABB, c: AABB, xa: f32) f32 {
         if (c.y1 <= self.y0 or c.y0 >= self.y1) return xa;
         if (c.z1 <= self.z0 or c.z0 >= self.z1) return xa;
 
-        if (xa > 0.0 and c.x1 <= self.x0) {
+        var _xa: f32 = xa;
+
+        if (_xa > 0.0 and c.x1 <= self.x0) {
             const max: f32 = self.x0 - c.x1 - self.epsilon;
-            if (max < xa) xa = max;
+            if (max < _xa) _xa = max;
         }
 
-        if (xa < 0.0 and c.x0 >= self.x1) {
+        if (_xa < 0.0 and c.x0 >= self.x1) {
             const max: f32 = self.x1 - c.x0 + self.epsilon;
-            if (max > xa) xa = max;
+            if (max > _xa) _xa = max;
         }
 
-        return xa;
+        return _xa;
     }
 
     pub fn clipYCollide(self: *AABB, c: AABB, ya: f32) f32 {
         if (c.x1 <= self.x0 or c.x0 >= self.x1) return ya;
         if (c.z1 <= self.z0 or c.z0 >= self.z1) return ya;
 
-        if (ya > 0.0 and c.y1 <= self.y0) {
+        var _ya: f32 = ya;
+
+        if (_ya > 0.0 and c.y1 <= self.y0) {
             const max: f32 = self.y0 - c.y1 - self.epsilon;
-            if (max < ya) ya = max;
+            if (max < _ya) _ya = max;
         }
 
-        if (ya < 0.0 and c.y0 >= self.y1) {
+        if (_ya < 0.0 and c.y0 >= self.y1) {
             const max: f32 = self.y1 - c.y0 + self.epsilon;
-            if (max > ya) ya = max;
+            if (max > _ya) _ya = max;
         }
 
-        return ya;
+        return _ya;
     }
 
     pub fn clipZCollide(self: *AABB, c: AABB, za: f32) f32 {
         if (c.x1 <= self.x0 or c.x0 >= self.x1) return za;
         if (c.y1 <= self.y0 or c.y0 >= self.y1) return za;
 
-        if (za > 0.0 and c.z1 <= self.z0) {
+        var _za: f32 = za;
+
+        if (_za > 0.0 and c.z1 <= self.z0) {
             const max: f32 = self.z0 - c.z1 - self.epsilon;
-            if (max < za) za = max;
+            if (max < _za) _za = max;
         }
 
-        if (za < 0.0 and c.z0 >= self.z1) {
+        if (_za < 0.0 and c.z0 >= self.z1) {
             const max: f32 = self.z1 - c.z0 + self.epsilon;
-            if (max > za) za = max;
+            if (max > _za) _za = max;
         }
 
-        return za;
+        return _za;
     }
 
     pub fn intersects(self: *AABB, c: AABB) bool {

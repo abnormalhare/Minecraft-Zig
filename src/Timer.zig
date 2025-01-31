@@ -31,7 +31,7 @@ pub const Timer = struct {
         if (passedNs < 0) passedNs = 0;
         if (passedNs > MAX_NS_PER_UPDATE) passedNs = MAX_NS_PER_UPDATE;
 
-        self.fps = @floatFromInt(@divFloor(NS_PER_SECOND, passedNs));
+        self.fps = NS_PER_SECOND / @as(f32, @floatFromInt(passedNs));
         self.passedTime += @as(f32, @floatFromInt(passedNs)) * self.timeScale * self.ticksPerSecond / NS_PER_SECOND;
 
         self.ticks = @intFromFloat(self.passedTime);
