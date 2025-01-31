@@ -23,45 +23,48 @@ pub const LevelRenderer = struct {
     xChunks: i32,
     yChunks: i32,
     zChunks: i32,
-    t: Tesselator,
+    t: *Tesselator,
 
-    pub fn new(level: *Level) *LevelRenderer {
+    pub fn new(level: *Level) !*LevelRenderer {
         const lr: *LevelRenderer = try allocator.create(LevelRenderer);
-        lr.t = Tesselator{};
+        lr.t = try allocator.create(Tesselator);
         lr.level = level;
-        lr.xChunks = level.width / 16;
-        lr.yChunks = level.depth / 16;
-        lr.zChunks = level.height / 16;
-        lr.chunks = [_]Chunk{} ** (lr.xChunks * lr.yChunks * lr.zChunks);
+        lr.xChunks = @divFloor(level.width, 16);
+        lr.yChunks = @divFloor(level.depth, 16);
+        lr.zChunks = @divFloor(level.height, 16);
+        lr.chunks = try allocator.alloc(Chunk, @as(usize, @intCast(lr.xChunks * lr.yChunks * lr.zChunks)));
         lr._levelListener.base = lr;
-        lr._levelListener.tileChanged = lr.tileChanged;
-        lr._levelListener.lightColumnChanged = lr.lightColumnChanged;
-        lr._levelListener.allChanged = lr.allChanged;
-        level.addListener(&lr.LevelListener);
+        lr._levelListener.tileChanged = tileChanged;
+        lr._levelListener.lightColumnChanged = lightColumnChanged;
+        lr._levelListener.allChanged = allChanged;
+        try level.addListener(&lr._levelListener);
 
-        for (0..lr.xChunks) |x| {
-            for (0..lr.yChunks) |y| {
-                for (0..lr.zChunks) |z| {
-                    const x0: i32 = x * 16;
-                    const y0: i32 = y * 16;
-                    const z0: i32 = z * 16;
-                    const x1: i32 = (x + 1) * 16;
-                    const y1: i32 = (y + 1) * 16;
-                    const z1: i32 = (z + 1) * 16;
+        for (0..@intCast(lr.xChunks)) |x| {
+            for (0..@intCast(lr.yChunks)) |y| {
+                for (0..@intCast(lr.zChunks)) |z| {
+                    const x0: i32 = @as(i32, @intCast(x)) * 16;
+                    const y0: i32 = @as(i32, @intCast(y)) * 16;
+                    const z0: i32 = @as(i32, @intCast(z)) * 16;
+                    var x1: i32 = @as(i32, @intCast(x + 1)) * 16;
+                    var y1: i32 = @as(i32, @intCast(y + 1)) * 16;
+                    var z1: i32 = @as(i32, @intCast(z + 1)) * 16;
 
                     if (x1 > level.width)  x1 = level.width;
                     if (y1 > level.depth)  y1 = level.depth;
                     if (z1 > level.height) z1 = level.height;
 
-                    lr.chunks[(x + y * lr.xChunks) * lr.zChunks + z] = Chunk.new(
+                    const chunk: *Chunk = try Chunk.new(
                         level, x0, y0, z0, x1, y1, z1,
                     );
+                    lr.chunks[(x + y * @as(usize, @intCast(lr.xChunks))) * @as(usize, @intCast(lr.zChunks)) + z] = chunk.*;
                 }
             }
         }
+
+        return lr;
     }
 
-    pub fn render(self: *LevelRenderer, player: Player, layer: i32) void {
+    pub fn render(self: *LevelRenderer, player: *Player, layer: i32) void {
         Chunk.rebuiltThisFrame = 0;
         const frustum: Frustum = Frustum.getFrustum();
         for (self.chunks) |i| {
@@ -72,7 +75,7 @@ pub const LevelRenderer = struct {
         player;
     }
 
-    pub fn pick(self: *LevelRenderer, player: Player) void {
+    pub fn pick(self: *LevelRenderer, player: *Player) void {
         const r: f32 = 3.0;
         const box: AABB = player.bb.grow(r, r, r);
         const x0: i32 = box.x0;
@@ -108,7 +111,7 @@ pub const LevelRenderer = struct {
         }
     }
 
-    pub fn renderHit(self: *LevelRenderer, h: HitResult) void {
+    pub fn renderHit(self: *LevelRenderer, h: *HitResult) void {
         GL.glEnable(GL.GL_BLEND);
         GL.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE);
         GL.glColor4f(1.0, 1.0, 1.0, f32(std.math.sin(std.time.milliTimestamp() / 100.0)) * 0.2 + 0.4);
@@ -119,35 +122,38 @@ pub const LevelRenderer = struct {
     }
 
     pub fn setDirty(self: *LevelRenderer, x0: i32, y0: i32, z0: i32, x1: i32, y1: i32, z1: i32) void {
-        x0 /= 16; x1 /= 16;
-        y0 /= 16; y1 /= 16;
-        z0 /= 16; z1 /= 16;
+        var _x0: i32 = @divFloor(x0, 16); var _x1: i32 = @divFloor(x1, 16);
+        var _y0: i32 = @divFloor(y0, 16); var _y1: i32 = @divFloor(y1, 16);
+        var _z0: i32 = @divFloor(z0, 16); var _z1: i32 = @divFloor(z1, 16);
 
-        if (x0 < 0) x0 = 0;
-        if (y0 < 0) y0 = 0;
-        if (z0 < 0) z0 = 0;
-        if (x1 >= self.xChunks) x1 = self.xChunks - 1;
-        if (y1 >= self.yChunks) y1 = self.yChunks - 1;
-        if (z1 >= self.zChunks) z1 = self.zChunks - 1;
+        if (_x0 < 0) _x0 = 0;
+        if (_y0 < 0) _y0 = 0;
+        if (_z0 < 0) _z0 = 0;
+        if (_x1 >= self.xChunks) _x1 = self.xChunks - 1;
+        if (_y1 >= self.yChunks) _y1 = self.yChunks - 1;
+        if (_z1 >= self.zChunks) _z1 = self.zChunks - 1;
 
-        for (x0..(x1 + 1)) |x| {
-            for (y0..(y1 + 1)) |y| {
-                for (z0..(z1 + 1)) |z| {
-                    self.chunks[(x + y * self.xChunks) * self.zChunks + z].setDirty();
+        for (@intCast(_x0)..@intCast(_x1 + 1)) |x| {
+            for (@intCast(_y0)..@intCast(_y1 + 1)) |y| {
+                for (@intCast(_z0)..@intCast(_z1 + 1)) |z| {
+                    self.chunks[(x + y * @as(usize, @intCast(self.xChunks))) * @as(usize, @intCast(self.zChunks)) + z].setDirty();
                 }
             }
         }
     }
 
     pub fn tileChanged(self: *LevelListener, x: i32, y: i32, z: i32) void {
-        self.base.setDirty(x - 1, y - 1, z - 1, x + 1, y + 1, z + 1);
+        const base: *LevelRenderer = @ptrCast(@alignCast(self.base));
+        base.setDirty(x - 1, y - 1, z - 1, x + 1, y + 1, z + 1);
     }
 
     pub fn lightColumnChanged(self: *LevelListener, x: i32, y0: i32, y1: i32, z: i32) void {
-        self.base.setDirty(x - 1, y0 - 1, z - 1, x + 1, y1 + 1, z + 1);
+        const base: *LevelRenderer = @ptrCast(@alignCast(self.base));
+        base.setDirty(x - 1, y0 - 1, z - 1, x + 1, y1 + 1, z + 1);
     }
 
     pub fn allChanged(self: *LevelListener) void {
-        self.base.setDirty(0, 0, 0, self.base.level.width, self.base.level.depth, self.base.level.height);
+        const base: *LevelRenderer = @ptrCast(@alignCast(self.base));
+        base.setDirty(0, 0, 0, base.level.width, base.level.depth, base.level.height);
     }
 };

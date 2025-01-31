@@ -37,54 +37,54 @@ pub const Level = struct {
         }
 
         l.calcLightDepths(0, 0, w, h);
-        l.load();
+        try l.load();
 
         return l;
     }
 
-    pub fn load(self: *Level) void {
+    pub fn load(self: *Level) !void {
         const dis = try std.fs.cwd().openFile("level.dat", .{});
         defer dis.close();
 
-        dis.readAll(self.blocks);
+        _ = try dis.readAll(self.blocks);
         self.calcLightDepths(0, 0, self.width, self.height);
         
         for (self.levelListeners.items) |listener| {
-            listener.allChanged();
+            listener.allChanged(listener);
         }
     }
 
-    pub fn save(self: *Level) void {
+    pub fn save(self: *Level) !void {
         const dos = try std.fs.cwd().openFile("level.dat", .{});
         defer dos.close();
 
-        dos.write(self.blocks);
+        _ = try dos.write(self.blocks);
     }
 
     pub fn calcLightDepths(self: *Level, x0: i32, y0: i32, x1: i32, y1: i32) void {
         for (0..@as(usize, @intCast(x0 + x1))) |x| {
             for (0..@as(usize, @intCast(y0 + y1))) |z| {
-                const oldDepth: i32 = self.lightDepths[x + z * self.width];
+                const oldDepth: i32 = self.lightDepths[x + z * @as(usize, @intCast(self.width))];
                 var y: i32 = self.depth - 1;
 
-                while (y > 0 and !self.isLightBlocker(x, y, z)) {
+                while (y > 0 and !self.isLightBlocker(@intCast(x), @intCast(y), @intCast(z))) {
                     y -= 1;
                 }
 
-                self.lightDepths[x + z * self.width] = y;
+                self.lightDepths[x + z * @as(usize, @intCast(self.width))] = y;
                 if (oldDepth != y) {
                     const y10: i32 = if (oldDepth < y) oldDepth else y;
                     const y11: i32 = if (oldDepth > y) oldDepth else y;
                     for (self.levelListeners.items) |listener| {
-                        listener.lightColumnChanged(x, z, y10, y11);
+                        listener.lightColumnChanged(listener, @intCast(x), @intCast(z), @intCast(y10), @intCast(y11));
                     }
                 }
             }
         }
     }
 
-    pub fn addListener(self: *Level, levelListener: *LevelListener) void {
-        self.levelListeners.append(levelListener);
+    pub fn addListener(self: *Level, levelListener: *LevelListener) !void {
+        try self.levelListeners.append(levelListener);
     }
 
     pub fn removeListener(self: *Level, levelListener: *LevelListener) void {

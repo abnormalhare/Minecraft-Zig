@@ -29,13 +29,20 @@ pub const Chunk = struct {
     pub var rebuiltThisFrame: i32 = 0;
     pub var updates: i32 = 0;
 
-    pub fn new(level: *Level, x0: i32, y0: i32, z0: i32, x1: i32, y1: i32, z1: i32) *Chunk {
-        const c: *Chunk = try allocator.alloc(Chunk, 1);
+    pub fn new(level: *Level, x0: i32, y0: i32, z0: i32, x1: i32, y1: i32, z1: i32) !*Chunk {
+        const c: *Chunk = try allocator.create(Chunk);
         c.level = level;
         c.x0 = x0; c.y0 = y0; c.z0 = z0;
         c.x1 = x1; c.y1 = y1; c.z1 = z1;
-        c.aabb = AABB{ .x0 = x0, .y0 = y0, .z0 = z0, .x1 = x1, .y1 = y1, .z1 = z1 };
-        c.lists = GL.glGenLists(2);
+        c.aabb = AABB{
+            .x0 = @floatFromInt(x0),
+            .y0 = @floatFromInt(y0),
+            .z0 = @floatFromInt(z0),
+            .x1 = @floatFromInt(x1),
+            .y1 = @floatFromInt(y1),
+            .z1 = @floatFromInt(z1)
+        };
+        c.lists = @intCast(GL.glGenLists(2));
         return c;
     }
 

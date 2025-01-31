@@ -25,7 +25,7 @@ pub const RubyDung = struct {
     level: *Level,
     levelRenderer: *LevelRenderer,
     player: *Player,
-    hitResult: *HitResult,
+    hitResult: ?*HitResult,
 
     viewportBuffer: [16]i32,
     selectBuffer: [2000]u32,
@@ -96,7 +96,7 @@ pub const RubyDung = struct {
         var ypos: f64 = 0;
         GL.glfwGetCursorPos(self.window, &xpos, &ypos);
 
-        const mouseDX = xpos - self.lastMouseX;
+        const mouseDX: f32 = @floatCast(xpos - self.lastMouseX);
         self.lastMouseX = xpos;
         return mouseDX;
     }
@@ -107,7 +107,7 @@ pub const RubyDung = struct {
         GL.glfwGetCursorPos(self.window, &xpos, &ypos);
 
         ypos = -ypos;
-        const mouseDY = ypos - self.lastMouseY;
+        const mouseDY: f32 = @floatCast(ypos - self.lastMouseY);
         self.lastMouseY = ypos;
         return mouseDY;
     }
@@ -143,32 +143,32 @@ pub const RubyDung = struct {
         GL.glMatrixMode(GL.GL_MODELVIEW);
 
         self.level = try Level.new(256, 256, 64);
-        self.levelRenderer = LevelRenderer.new(self.level);
-        self.player = Player.init(self.level, self.window);
-        self.timer = Timer.new(60.0);
+        self.levelRenderer = try LevelRenderer.new(self.level);
+        self.player = try Player.init(self.level, self.window);
+        self.timer = try Timer.new(60.0);
 
         GL.glfwSetInputMode(self.window, GL.GLFW_CURSOR, GL.GLFW_CURSOR_DISABLED);
 
         return self;
     }
 
-    fn destroy(self: *RubyDung) void {
-        self.level.save();
+    fn destroy(self: *RubyDung) !void {
+        try self.level.save();
 
         GL.glfwDestroyCursor(self.cursor);
         GL.glfwDestroyWindow(self.window);
         GL.glfwTerminate();
     }
 
-    fn run(self: *RubyDung) void {
+    fn run(self: *RubyDung) !void {
         var lastTime: i64 = std.time.milliTimestamp();
         var frames: i32 = 0;
         while (GL.glfwWindowShouldClose(self.window) == 0) {
             self.timer.advanceTime();
-            for (0..self.timer.ticks) |i| {
-                self.tick(); i;
+            for (0..@intCast(self.timer.ticks)) |i| {
+                self.tick(); _ = i;
             }
-            self.render(self.timer.a);
+            try self.render(self.timer.a);
             frames += 1;
 
             while (std.time.milliTimestamp() >= lastTime + 1000) {
@@ -179,7 +179,7 @@ pub const RubyDung = struct {
             }
         }
 
-        self.destroy();
+        try self.destroy();
     }
 
     fn tick(self: *RubyDung) void {
@@ -210,58 +210,61 @@ pub const RubyDung = struct {
         GL.glMatrixMode(GL.GL_PROJECTION);
         GL.glLoadIdentity();
         self.viewportBuffer = [_]i32{0} ** 16;
-        GL.glGetIntegerv(GL.GL_VIEWPORT, self.viewportBuffer);
-        GLU.gluPickMatrix(x, y, 5.0, 5.0, self.viewportBuffer);
-        GLU.gluPerspective(70.0, self.width / f64(self.height), 0.05, 1000.0);
+        GL.glGetIntegerv(GL.GL_VIEWPORT, &self.viewportBuffer);
+        GLU.gluPickMatrix(@floatFromInt(x), @floatFromInt(y), 5.0, 5.0, &self.viewportBuffer);
+        GLU.gluPerspective(70.0, @floatFromInt(@divFloor(self.width, self.height)), 0.05, 1000.0);
         GL.glMatrixMode(GL.GL_MODELVIEW);
         GL.glLoadIdentity();
         self.moveCameraToPlayer(a);
     }
 
-    fn pick(self: *RubyDung, a: f32) void {
+    fn pick(self: *RubyDung, a: f32) !void {
         self.selectBuffer = [_]u32{0} ** 2000;
-        GL.glSelectBuffer(2000, self.selectBuffer);
-        GL.glRenderMode(GL.GL_SELECT);
-        self.setupPickCamera(a, self.width / 2, self.height / 2);
+        GL.glSelectBuffer(2000, &self.selectBuffer);
+        _ = GL.glRenderMode(GL.GL_SELECT);
+        self.setupPickCamera(a, @divFloor(self.width, 2), @divFloor(self.height, 2));
         self.levelRenderer.pick(self.player);
 
         const hits: i32 = GL.glRenderMode(GL.GL_RENDER);
         var closest: i64 = 0;
-        const names: [10]i32 = [_]i32{0} ** 10;
+        var names: [10]i32 = [_]i32{0} ** 10;
         var hitNameCount: i32 = 0;
         var index: i32 = 0;
 
-        for (0..hits) |i| {
-            const nameCount: u32 = self.selectBuffer[index];
+        for (0..@intCast(hits)) |i| {
+            const nameCount: u32 = self.selectBuffer[@intCast(index)];
             index += 1;
-            const minZ: i64 = self.selectBuffer[index];
+            const minZ: i64 = self.selectBuffer[@intCast(index)];
             index += 2;
 
             const dist: i64 = minZ;
             if (dist < closest or i == 0) {
                 closest = dist;
-                hitNameCount = nameCount;
-                for (names) |*j| {
-                    j.* = self.selectBuffer[index];
+                hitNameCount = @intCast(nameCount);
+                for (&names) |*j| {
+                    j.* = @intCast(self.selectBuffer[@intCast(index)]);
                     index += 1;
                 }
             } else {
-                index += nameCount;
+                index += @intCast(nameCount);
             }
         }
 
+        if (self.hitResult != null) {
+            allocator.destroy(self.hitResult);
+        }
         if (hitNameCount > 0) {
-            self.hitResult = HitResult{ names[0], names[1], names[2], names[3], names[4], names[5] };
+            self.hitResult = try HitResult.new(names[0], names[1], names[2], names[3], names[4]);
         } else {
             self.hitResult = null;
         }
     }
 
-    fn render(self: *RubyDung, a: f32) void {
+    fn render(self: *RubyDung, a: f32) !void {
         const xo: f32 = self.getMouseDX();
         const yo: f32 = self.getMouseDY();
         self.player.turn(xo, yo);
-        self.pick(a);
+        try self.pick(a);
 
         GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT);
         self.setupCamera(a);
@@ -269,14 +272,14 @@ pub const RubyDung = struct {
         GL.glEnable(GL.GL_FOG);
         GL.glFogi(GL.GL_FOG_MODE, 2048);
         GL.glFogf(GL.GL_FOG_DENSITY, 0.2);
-        GL.glFogfv(GL.GL_FOG_COLOR, self.fogColor);
+        GL.glFogfv(GL.GL_FOG_COLOR, &self.fogColor);
         GL.glDisable(GL.GL_FOG);
         self.levelRenderer.render(self.player, 0);
         GL.glEnable(GL.GL_FOG);
         self.levelRenderer.render(self.player, 1);
         GL.glDisable(GL.GL_TEXTURE_2D);
         if (self.hitResult != null) {
-            self.levelRenderer.renderHit(self.hitResult);
+            self.levelRenderer.renderHit(self.hitResult.?);
         }
         GL.glDisable(GL.GL_FOG);
         GL.glfwSwapBuffers(self.window);
@@ -286,17 +289,16 @@ pub const RubyDung = struct {
 
 var rd: *RubyDung = undefined;
 
-fn initExternal() void {
-    Frustum.frustum = Frustum.new();
+fn initExternal() !void {
+    Frustum.frustum = try Frustum.new();
 }
 
 pub fn main() !void {
-    initExternal();
+    try initExternal();
 
     rd = try RubyDung.init();
-    defer rd.destroy();
 
-    rd.run();
+    try rd.run();
 }
 
 fn mouse_button_callback(window: ?*GL.GLFWwindow, button: c_int, action: c_int, mods: c_int) callconv(.C) void {
@@ -304,5 +306,5 @@ fn mouse_button_callback(window: ?*GL.GLFWwindow, button: c_int, action: c_int, 
 }
 
 fn key_callback(window: ?*GL.GLFWwindow, key: c_int, scancode: c_int, action: c_int, mods: c_int) callconv(.C) void {
-    rd.mouseButtonCallback(window, @as(i32, key), @as(i32, scancode), @as(i32, action), @as(i32, mods));
+    rd.keyCallback(window, @as(i32, key), @as(i32, scancode), @as(i32, action), @as(i32, mods));
 }

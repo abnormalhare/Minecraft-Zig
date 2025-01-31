@@ -15,8 +15,8 @@ pub const Timer = struct {
     fps: f32 = 0.0,
     passedTime: f32 = 0.0,
 
-    pub fn new(ticksPerSecond: f32) *Timer {
-        const t: *Timer = try allocator.alloc(Timer, 1);
+    pub fn new(ticksPerSecond: f32) !*Timer {
+        const t: *Timer = try allocator.create(Timer);
         t.ticksPerSecond = ticksPerSecond;
         t.lastTime = std.time.nanoTimestamp();
 
@@ -31,12 +31,12 @@ pub const Timer = struct {
         if (passedNs < 0) passedNs = 0;
         if (passedNs > MAX_NS_PER_UPDATE) passedNs = MAX_NS_PER_UPDATE;
 
-        self.fps = NS_PER_SECOND / passedNs;
-        self.passedTime += passedNs * self.timeScale * self.ticksPerSecond / NS_PER_SECOND;
+        self.fps = @floatFromInt(@divFloor(NS_PER_SECOND, passedNs));
+        self.passedTime += @as(f32, @floatFromInt(passedNs)) * self.timeScale * self.ticksPerSecond / NS_PER_SECOND;
 
-        self.ticks = self.passedTime;
+        self.ticks = @intFromFloat(self.passedTime);
         if (self.ticks > MAX_TICKS_PER_UPDATE) self.ticks = MAX_TICKS_PER_UPDATE;
-        self.passedTime -= self.ticks;
+        self.passedTime -= @floatFromInt(self.ticks);
         self.a = self.passedTime;
     }
 };

@@ -31,8 +31,8 @@ pub const Player = struct {
         return state == GL.GLFW_PRESS;
     }
 
-    pub fn init(level: *Level, window: ?*GL.GLFWwindow) *Player {
-        const self: *Player = allocator.create(Player);
+    pub fn init(level: *Level, window: ?*GL.GLFWwindow) !*Player {
+        const self: *Player = try allocator.create(Player);
         self.window = window;
         self.level = level;
         self.resetPos();
@@ -41,9 +41,9 @@ pub const Player = struct {
     }
 
     fn resetPos(self: *Player) void {
-        const x: f32 = rand.float(f32) * self.level.width;
-        const y: f32 = self.level.depth + 10;
-        const z: f32 = rand.float(f32) * self.level.height;
+        const x: f32 = rand.float(f32) * @as(f32, @floatFromInt(self.level.width));
+        const y: f32 = @as(f32, @floatFromInt(self.level.depth + 10));
+        const z: f32 = rand.float(f32) * @as(f32, @floatFromInt(self.level.height));
         self.setPos(x, y, z);
     }
 
@@ -57,8 +57,8 @@ pub const Player = struct {
     }
 
     pub fn turn(self: *Player, xo: f32, yo: f32) void {
-        self.yRot += f64(self.yRot) + f64(xo) * 0.15;
-        self.xRot += f64(self.xRot) - f64(yo) * 0.15;
+        self.yRot += @floatCast(@as(f64, @floatCast(self.yRot + xo)) * 0.15);
+        self.xRot += @floatCast(@as(f64, @floatCast(self.xRot - yo)) * 0.15);
         if (self.xRot < -90.0) self.xRot = -90.0;
         if (self.xRot > 90.0) self.yRot = 90;
     }
@@ -90,7 +90,7 @@ pub const Player = struct {
         }
         self.moveRelative(xa, ya, if (self.onGround) 0.02 else 0.005);
 
-        self.yd = f64(self.yd) - 0.005;
+        self.yd = @floatCast(@as(f64, self.yd) - 0.005);
         self.move(self.xd, self.yd, self.zd);
         self.xd *= 0.91;
         self.yd *= 0.98;
@@ -139,8 +139,8 @@ pub const Player = struct {
         dist = speed / std.math.sqrt(dist);
         xa *= dist;
         za *= dist;
-        const sin: f32 = std.math.sin(f64(self.yRot) * std.math.pi / 180.0);
-        const cos: f32 = std.math.cos(f64(self.yRot) * std.math.pi / 180.0);
+        const sin: f32 = std.math.sin(@as(f64, self.yRot) * std.math.pi / 180.0);
+        const cos: f32 = std.math.cos(@as(f64, self.yRot) * std.math.pi / 180.0);
         self.xd += xa * cos - za * sin;
         self.zd += za * cos + xa * sin;
     }

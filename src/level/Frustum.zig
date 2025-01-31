@@ -17,7 +17,7 @@ pub const Frustum = struct {
 
     pub var frustum: *Frustum = undefined;
 
-    pub fn new() *Frustum {
+    pub fn new() !*Frustum {
         const f: *Frustum = try allocator.create(Frustum);
         return f;
     }
