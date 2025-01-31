@@ -22,7 +22,7 @@ pub const Chunk = struct {
 
     dirty: bool = true,
     lists: i32 = -1,
-    texture: i32 = Textures.loadTexture("/terrain.png", GL.GL_NEAREST),
+    texture: i32,
     t: *Tesselator,
 
     pub var rebuiltThisFrame: i32 = 0;
@@ -30,6 +30,7 @@ pub const Chunk = struct {
 
     pub fn new(level: *Level, x0: i32, y0: i32, z0: i32, x1: i32, y1: i32, z1: i32) !*Chunk {
         const c: *Chunk = try allocator.create(Chunk);
+        c.texture = Textures.loadTexture("/terrain.png", GL.GL_NEAREST);
         c.t = try allocator.create(Tesselator);
         c.level = level;
         c.x0 = x0; c.y0 = y0; c.z0 = z0;
