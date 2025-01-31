@@ -36,7 +36,7 @@ pub const Tile = struct {
         }
 
         if (!level.isSolidTile(x, y + 1, z)) {
-            const br: f32 = level.getBrightness(x, y, z) * c1;
+            const br: f32 = level.getBrightness(x, y + 1, z) * c1;
             if ((@intFromBool(br == c1) ^ @intFromBool(layer == 1)) != 0) {
                 t.color(br, br, br);
                 t.tex(_u1, v1);

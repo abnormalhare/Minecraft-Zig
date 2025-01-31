@@ -1,4 +1,5 @@
 const std = @import("std");
+const allocator = @import("../root.zig").allocator;
 const GL = @import("glfw3");
 
 const Level = @import("Level.zig").Level;
@@ -13,9 +14,6 @@ const Tiles = @import("Tile.zig");
 
 const CHUNK_SIZE: i32 = 16;
 
-var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-const allocator = gpa.allocator();
-
 pub const LevelRenderer = struct {
     _levelListener: LevelListener,
     level: *Level,
@@ -29,9 +27,9 @@ pub const LevelRenderer = struct {
         const lr: *LevelRenderer = try allocator.create(LevelRenderer);
         lr.t = try allocator.create(Tesselator);
         lr.level = level;
-        lr.xChunks = @divFloor(level.width, 16);
-        lr.yChunks = @divFloor(level.depth, 16);
-        lr.zChunks = @divFloor(level.height, 16);
+        lr.xChunks = @divFloor(level.width, CHUNK_SIZE);
+        lr.yChunks = @divFloor(level.depth, CHUNK_SIZE);
+        lr.zChunks = @divFloor(level.height, CHUNK_SIZE);
         lr.chunks = try allocator.alloc(Chunk, @as(usize, @intCast(lr.xChunks * lr.yChunks * lr.zChunks)));
         lr._levelListener.base = lr;
         lr._levelListener.tileChanged = tileChanged;

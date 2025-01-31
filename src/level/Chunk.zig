@@ -1,4 +1,5 @@
 const std = @import("std");
+const allocator = @import("../root.zig").allocator;
 
 const GL = @import("glfw3");
 const AABB = @import("../phys/AABB.zig").AABB;
@@ -7,8 +8,6 @@ const Textures = @import("../Textures.zig").Textures;
 const Tesselator = @import("Tesselator.zig").Tesselator;
 const Tiles = @import("Tile.zig");
 const Tile = Tiles.Tile;
-
-const allocator = std.heap.page_allocator;
 
 pub const Chunk = struct {
     aabb: AABB,
@@ -64,12 +63,15 @@ pub const Chunk = struct {
         for (@intCast(self.x0)..@intCast(self.x1)) |x| {
             for (@intCast(self.y0)..@intCast(self.y1)) |y| {
                 for (@intCast(self.z0)..@intCast(self.z1)) |z| {
-                    const tex: i32 = if (y == @divFloor(self.level.depth * 2, 3)) 0 else 1;
-                    tiles += 1;
-                    if (tex == 0) {
-                        Tiles.rock.render(self.t, self.level, layer, @intCast(x), @intCast(y), @intCast(z));
-                    } else {
-                        Tiles.grass.render(self.t, self.level, layer, @intCast(x), @intCast(y), @intCast(z));
+                    if (self.level.isTile(@intCast(x), @intCast(y), @intCast(z))) {
+                        const tex: i32 = if (y == @divFloor(self.level.depth * 2, 3)) 0 else 1;
+                        tiles += 1;
+
+                        if (tex == 0) {
+                            Tiles.rock.render(self.t, self.level, layer, @intCast(x), @intCast(y), @intCast(z));
+                        } else {
+                            Tiles.grass.render(self.t, self.level, layer, @intCast(x), @intCast(y), @intCast(z));
+                        }
                     }
                 }
             }

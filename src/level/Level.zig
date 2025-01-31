@@ -1,9 +1,8 @@
 const std = @import("std");
+const allocator = @import("../root.zig").allocator;
+
 const LevelListener = @import("LevelListener.zig").LevelListener;
 const AABB = @import("../phys/AABB.zig").AABB;
-
-var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-const allocator = gpa.allocator();
 
 pub const Level = struct {
     width: i32, height: i32, depth: i32,

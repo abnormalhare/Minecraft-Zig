@@ -81,7 +81,7 @@ pub const Tesselator = struct {
         }
 
         self.vertices += 1;
-        if (self.vertices == 100000) {
+        if (self.vertices == MAX_VERTICES) {
             self.flush();
         }
     }

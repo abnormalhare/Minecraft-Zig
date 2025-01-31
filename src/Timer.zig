@@ -1,10 +1,9 @@
 const std = @import("std");
+const allocator = @import("root.zig").allocator;
 
 const NS_PER_SECOND: i64 = 1000000000;
 const MAX_NS_PER_UPDATE: i64 = 1000000000;
 const MAX_TICKS_PER_UPDATE: i32 = 100;
-
-const allocator = std.heap.page_allocator;
 
 pub const Timer = struct {
     ticksPerSecond: f32,

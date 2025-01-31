@@ -1,13 +1,11 @@
 const std = @import("std");
+const allocator = @import("root.zig").allocator;
 const GL = @import("glfw3");
 
 const Level = @import("level/Level.zig").Level;
 const AABB = @import("phys/AABB.zig").AABB;
 
 const rand = std.crypto.random;
-
-var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-const allocator = gpa.allocator();
 
 pub const Player = struct {
     window: ?*GL.GLFWwindow,

@@ -1,10 +1,8 @@
 const std = @import("std");
+const allocator = @import("../root.zig").allocator;
 const GL = @import("glfw3");
 
 const AABB = @import("../phys/AABB.zig").AABB;
-
-var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-const allocator = gpa.allocator();
 
 pub const Frustum = struct {
     m_Frustum: [6][4]f32,
@@ -112,7 +110,7 @@ pub const Frustum = struct {
     }
 
     pub fn cubeFullyInFrustum(self: *Frustum, x1: f32, y1: f32, z1: f32, x2: f32, y2: f32, z2: f32) bool {
-        inline for (0..6) |i| {
+        for (0..6) |i| {
             if (self.m_Frustum[i][0] * x1 + self.m_Frustum[i][1] * y1 + self.m_Frustum[i][2] * z1 + self.m_Frustum[i][3] <= 0.0) {
                 return false;
             }
@@ -142,18 +140,18 @@ pub const Frustum = struct {
     }
 
     pub fn cubeInFrustum(self: *Frustum, x1: f32, y1: f32, z1: f32, x2: f32, y2: f32, z2: f32) bool {
-        inline for (0..6) |i| {
-            if (self.m_Frustum[i][0] * x1 + self.m_Frustum[i][1] * y1 + self.m_Frustum[i][2] * z1 + self.m_Frustum[i][3] <= 0.0 or
-                self.m_Frustum[i][0] * x2 + self.m_Frustum[i][1] * y1 + self.m_Frustum[i][2] * z1 + self.m_Frustum[i][3] <= 0.0 or
-                self.m_Frustum[i][0] * x1 + self.m_Frustum[i][1] * y2 + self.m_Frustum[i][2] * z1 + self.m_Frustum[i][3] <= 0.0 or
-                self.m_Frustum[i][0] * x2 + self.m_Frustum[i][1] * y2 + self.m_Frustum[i][2] * z1 + self.m_Frustum[i][3] <= 0.0 or
-                self.m_Frustum[i][0] * x1 + self.m_Frustum[i][1] * y1 + self.m_Frustum[i][2] * z2 + self.m_Frustum[i][3] <= 0.0 or
-                self.m_Frustum[i][0] * x2 + self.m_Frustum[i][1] * y1 + self.m_Frustum[i][2] * z2 + self.m_Frustum[i][3] <= 0.0 or
-                self.m_Frustum[i][0] * x1 + self.m_Frustum[i][1] * y2 + self.m_Frustum[i][2] * z2 + self.m_Frustum[i][3] <= 0.0 or
-                self.m_Frustum[i][0] * x2 + self.m_Frustum[i][1] * y2 + self.m_Frustum[i][2] * z2 + self.m_Frustum[i][3] <= 0.0) {
-                    
-                return false;
+        for (0..6) |i| {
+            if (self.m_Frustum[i][0] * x1 + self.m_Frustum[i][1] * y1 + self.m_Frustum[i][2] * z1 + self.m_Frustum[i][3] > 0.0 or
+                self.m_Frustum[i][0] * x2 + self.m_Frustum[i][1] * y1 + self.m_Frustum[i][2] * z1 + self.m_Frustum[i][3] > 0.0 or
+                self.m_Frustum[i][0] * x1 + self.m_Frustum[i][1] * y2 + self.m_Frustum[i][2] * z1 + self.m_Frustum[i][3] > 0.0 or
+                self.m_Frustum[i][0] * x2 + self.m_Frustum[i][1] * y2 + self.m_Frustum[i][2] * z1 + self.m_Frustum[i][3] > 0.0 or
+                self.m_Frustum[i][0] * x1 + self.m_Frustum[i][1] * y1 + self.m_Frustum[i][2] * z2 + self.m_Frustum[i][3] > 0.0 or
+                self.m_Frustum[i][0] * x2 + self.m_Frustum[i][1] * y1 + self.m_Frustum[i][2] * z2 + self.m_Frustum[i][3] > 0.0 or
+                self.m_Frustum[i][0] * x1 + self.m_Frustum[i][1] * y2 + self.m_Frustum[i][2] * z2 + self.m_Frustum[i][3] > 0.0 or
+                self.m_Frustum[i][0] * x2 + self.m_Frustum[i][1] * y2 + self.m_Frustum[i][2] * z2 + self.m_Frustum[i][3] > 0.0) {
+                continue;
             }
+            return false;
         }
         return true;
     }
