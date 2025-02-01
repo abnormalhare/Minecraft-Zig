@@ -36,21 +36,35 @@ pub fn build(b: *std.Build) void {
     });
     exe.root_module.addImport("glfw3", glfw3.createModule());
 
-    // GLU //
-    const glu = b.addTranslateC(.{
-        .root_source_file = b.path("include/GL/glu.h"),
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    });
-    exe.root_module.addImport("glu", glu.createModule());
+    if (target.result.os.tag == .windows) {
+        // Billy gates
+        // GLU //
+        const glu = b.addTranslateC(.{
+            .root_source_file = b.path("include/GL/glu.h"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+        });
+        exe.root_module.addImport("glu", glu.createModule());
 
-    exe.addLibraryPath(b.path("./lib/"));
-    exe.linkSystemLibrary("glfw3");
-    exe.linkSystemLibrary("opengl32");
-    exe.linkSystemLibrary("glu32");
-    exe.linkSystemLibrary("gdi32");
-    exe.linkSystemLibrary("shlwapi");
+        exe.addLibraryPath(b.path("./lib/"));
+        exe.linkSystemLibrary("glfw3");
+        exe.linkSystemLibrary("opengl32");
+        exe.linkSystemLibrary("glu32");
+        exe.linkSystemLibrary("gdi32");
+        exe.linkSystemLibrary("shlwapi");
+    } else {
+        // Linux, MacOS, BSD, etc.
+
+        // GLU //
+        exe.addSystemIncludePath(.{ .cwd_relative = "/usr/include/" });
+        exe.linkSystemLibrary("GLU");
+        exe.linkSystemLibrary("GL");
+
+        exe.addLibraryPath(b.path("./lib/"));
+        exe.linkSystemLibrary("glfw3");
+    }
+
     exe.linkLibC();
 
     b.installArtifact(exe);
