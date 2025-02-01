@@ -1,8 +1,17 @@
 const std = @import("std");
 const allocator = @import("root.zig").allocator;
 const GL = @import("glfw3");
+
+// windows
+//const GLU = @cImport({
+//    @cInclude("C:/msys64/ucrt64/include/GL/glu.h");
+//});
 const GLU = @cImport({
-    @cInclude("C:/msys64/ucrt64/include/GL/glu.h");
+    if (@import("builtin").os.tag == .windows) {
+        @cInclude("C:/msys64/ucrt64/include/GL/glu.h"); // Billy gates
+    } else {
+        @cInclude("GL/glu.h"); // Linux, MacOS, BSD, etc.
+    }
 });
 
 const Level = @import("level/Level.zig").Level;
@@ -126,8 +135,8 @@ pub const RubyDung = struct {
         const fg: f32 = 0.8;
         const fb: f32 = 1.0;
         self.fogColor[0] = @as(f32, (col >> 16) & 0xFF) / 255.0;
-        self.fogColor[1] = @as(f32, (col >> 8 ) & 0xFF) / 255.0;
-        self.fogColor[2] = @as(f32, (col >> 0 ) & 0xFF) / 255.0;
+        self.fogColor[1] = @as(f32, (col >> 8) & 0xFF) / 255.0;
+        self.fogColor[2] = @as(f32, (col >> 0) & 0xFF) / 255.0;
         self.fogColor[3] = 1.0;
 
         self.width = 1024;
@@ -171,7 +180,8 @@ pub const RubyDung = struct {
         while (GL.glfwWindowShouldClose(self.window) == 0) {
             self.timer.advanceTime();
             for (0..@intCast(self.timer.ticks)) |i| {
-                self.tick(); _ = i;
+                self.tick();
+                _ = i;
             }
             try self.render(self.timer.a);
             frames += 1;
@@ -206,7 +216,7 @@ pub const RubyDung = struct {
         GL.glMatrixMode(GL.GL_PROJECTION);
         GL.glLoadIdentity();
         const aspect = @as(f64, @floatFromInt(self.width)) / @as(f64, @floatFromInt(self.width));
-        GLU.gluPerspective(70.0,  aspect, 0.05, 1000.0);
+        GLU.gluPerspective(70.0, aspect, 0.05, 1000.0);
         GL.glMatrixMode(GL.GL_MODELVIEW);
         GL.glLoadIdentity();
         self.moveCameraToPlayer(a);
@@ -219,7 +229,7 @@ pub const RubyDung = struct {
         GL.glGetIntegerv(GL.GL_VIEWPORT, &self.viewportBuffer);
         GLU.gluPickMatrix(@floatFromInt(x), @floatFromInt(y), 5.0, 5.0, &self.viewportBuffer);
         const aspect = @as(f64, @floatFromInt(self.width)) / @as(f64, @floatFromInt(self.width));
-        GLU.gluPerspective(70.0,  aspect, 0.05, 1000.0);
+        GLU.gluPerspective(70.0, aspect, 0.05, 1000.0);
         GL.glMatrixMode(GL.GL_MODELVIEW);
         GL.glLoadIdentity();
         self.moveCameraToPlayer(a);
@@ -264,7 +274,7 @@ pub const RubyDung = struct {
         }
         if (hitNameCount > 0) {
             self.hitResult = HitResult.new(names[0], names[1], names[2], names[3], names[4]);
-            std.debug.print("NEW HIT AT {d} {d} {d}", .{self.hitResult.?.x, self.hitResult.?.y, self.hitResult.?.z});
+            std.debug.print("NEW HIT AT {d} {d} {d}", .{ self.hitResult.?.x, self.hitResult.?.y, self.hitResult.?.z });
         }
     }
 
