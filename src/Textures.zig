@@ -2,9 +2,7 @@ const std = @import("std");
 const allocator = @import("root.zig").allocator;
 const GL = @import("glfw3");
 const zstbi = @import("zstbi");
-const GLU = @cImport({
-    @cInclude("C:/msys64/ucrt64/include/GL/glu.h");
-});
+const GLU = @import("glu");
 
 pub const Textures = struct {
     const idMap = std.StringHashMap(i32).init(allocator);

@@ -1,18 +1,7 @@
 const std = @import("std");
 const allocator = @import("root.zig").allocator;
 const GL = @import("glfw3");
-
-// windows
-//const GLU = @cImport({
-//    @cInclude("C:/msys64/ucrt64/include/GL/glu.h");
-//});
-const GLU = @cImport({
-    if (@import("builtin").os.tag == .windows) {
-        @cInclude("C:/msys64/ucrt64/include/GL/glu.h"); // Billy gates
-    } else {
-        @cInclude("GL/glu.h"); // Linux, MacOS, BSD, etc.
-    }
-});
+const GLU = @import("glu");
 
 const Level = @import("level/Level.zig").Level;
 const Timer = @import("Timer.zig").Timer;
