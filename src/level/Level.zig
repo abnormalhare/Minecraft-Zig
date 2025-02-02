@@ -118,6 +118,9 @@ pub const Level = struct {
         var y1: i32 = @intFromFloat(aABB.y1 + 1.0);
         var z0: i32 = @intFromFloat(aABB.z0);
         var z1: i32 = @intFromFloat(aABB.z1 + 1.0);
+        
+        std.debug.print("box: {d} {d} {d} | {d} {d} {d}\n", 
+            .{x0, y0, z0, x1, y1, z1});
 
         if (x0 < 0) x0 = 0;
         if (y0 < 0) y0 = 0;

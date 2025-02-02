@@ -175,6 +175,8 @@ pub const RubyDung = struct {
             try self.render(self.timer.a);
             frames += 1;
 
+            // std.debug.print("POS: {d} {d} {d}\n", .{self.player.x, self.player.y, self.player.z});
+
             while (std.time.milliTimestamp() >= lastTime + 1000) {
                 std.debug.print("{d} fps, {d}\n", .{ frames, Chunk.updates });
                 Chunk.updates = 0;
