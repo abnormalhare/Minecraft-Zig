@@ -265,7 +265,7 @@ pub const RubyDung = struct {
         }
         if (hitNameCount > 0) {
             self.hitResult = HitResult.new(names[0], names[1], names[2], names[3], names[4]);
-            std.debug.print("NEW HIT AT {d} {d} {d}", .{ self.hitResult.?.x, self.hitResult.?.y, self.hitResult.?.z });
+            std.debug.print("NEW HIT AT {d} {d} {d}\n", .{ self.hitResult.?.x, self.hitResult.?.y, self.hitResult.?.z });
         }
     }
 

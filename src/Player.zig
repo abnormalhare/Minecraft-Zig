@@ -87,8 +87,8 @@ pub const Player = struct {
             if (self.onGround) self.yd = 0.12;
         }
         self.moveRelative(xa, ya, if (self.onGround) 0.02 else 0.005);
-
         self.yd = @floatCast(@as(f64, self.yd) - 0.005);
+
         self.move(self.xd, self.yd, self.zd);
         self.xd *= 0.91;
         self.yd *= 0.98;
@@ -103,11 +103,13 @@ pub const Player = struct {
         const xaOrg: f32 = xa;
         const yaOrg: f32 = ya;
         const zaOrg: f32 = za;
-        const aABBs = self.level.getCubes(self.bb.expand(xa, ya, za));
+        const aabb: AABB = self.bb.expand(xa, ya, za);
+        const aABBs = self.level.getCubes(aabb);
         var _xa: f32 = xa;
         var _ya: f32 = ya;
         var _za: f32 = za;
 
+        // std.debug.print("aabb count: {d}\n", .{aABBs.items.len});
 
         for (aABBs.items) |*i| {
             _ya = i.clipYCollide(self.bb, _ya);
@@ -125,12 +127,13 @@ pub const Player = struct {
         self.bb.move(0.0, 0.0, _za);
 
         self.onGround = (yaOrg != _ya and yaOrg < 0.0);
+
         if (xaOrg != _xa) self.xd = 0.0;
         if (yaOrg != _ya) self.yd = 0.0;
         if (zaOrg != _za) self.zd = 0.0;
 
         self.x = (self.bb.x0 + self.bb.x1) / 2.0;
-        self.y = (self.bb.y0) + 1.62;
+        self.y = self.bb.y0 + 1.62;
         self.z = (self.bb.z0 + self.bb.z1) / 2.0;
     }
 
@@ -141,7 +144,7 @@ pub const Player = struct {
         dist = speed / std.math.sqrt(dist);
         const _xa = xa * dist;
         const _za = za * dist;
-        const deg: f64 = @as(f64, @floatCast(self.yRot)) * std.math.pi / 180.0;
+        const deg: f32 = @floatCast(@as(f64, @floatCast(self.yRot)) * std.math.pi / 180.0);
         const sin: f32 = @floatCast(std.math.sin(deg));
         const cos: f32 = @floatCast(std.math.cos(deg));
         self.xd += _xa * cos - _za * sin;
